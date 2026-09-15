@@ -73,37 +73,51 @@ A modular C++17 multi-sensor SLAM system with automated evaluation and failure a
 ### SLAM Core Architecture
 
 ```text
-                              SLAM
-                               │
-        ┌──────────────┬───────┼────────┬──────────────┬─────────────┐
-        ▼              ▼       ▼        ▼              ▼             ▼
- Sensor Manager    Frontend  Estimator Backend    Loop Closure   Visualizer
-        │              │       │        │              │
-        │              │       │        ├── Local      │
-        │              │       │        ├── Global     │
-        │              │       │        │              │
-        │              │       │        ├── Ceres      │
-        │              │       │        ├── GTSAM      │
-        │              │       │        └── g2o        │
-        │              │       │                       │
-        │              │       │                       ▼
-        │              │       │                 Loop Constraints
-        │              │       │
-        │              │       ├── Predictor
-        │              │       │    └── Motion Model
-        │              │       │
-        │              │       ├── Corrector
-        │              │       │    └── Measurement Model
-        │              │       │
-        │              │       └── State / Uncertainty
-        │              │
-        │              ├── Camera Frontend
-        │              ├── IMU Frontend
-        │              └── LiDAR Frontend
+                                      SLAM
+                                       │
+        ┌───────────────┬──────────────┼──────────────┬───────────────┬───────────────┐
+        │               │              │              │               │               │
+        ▼               ▼              ▼              ▼               ▼               ▼
+ Sensor Manager      Frontend      Estimator       Backend       Loop Closure    Visualizer
+        │               │              │              │               │               │
+        │               ├─ Camera      │              │               ├─ Place        └─ Visualization
+        │               ├─ IMU         │              │               │  Recognition
+        │               └─ LiDAR       │              │               ├─ Loop Detection
+        │                              │              │               └─ Constraints
+        │                              │              │
+        │                              │              ├── Local Backend
+        │                              │              │    ├─ Sliding Window
+        │                              │              │    ├─ Local Pose Optimization
+        │                              │              │    ├─ Local Bundle Adjustment
+        │                              │              │    └─ Marginalization
+        │                              │              │
+        │                              │              └── Global Backend
+        │                              │                   ├─ Pose Graph Optimization
+        │                              │                   ├─ Global Bundle Adjustment
+        │                              │                   └─ Map / Trajectory Optimization
+        │                              │
+        │                     ┌────────┴────────┐
+        │                     │                 │
+        │                     ▼                 ▼
+        │                  Filter           Optimizer
+        │                     │                 │
+        │             ┌───────┼───────┐         ├─ State
+        │             │       │       │         ├─ Factors
+        │             ▼       ▼       ▼         ├─ Residuals
+        │        Predictor  State  Corrector    ├─ Jacobians
+        │             │               │         └─ Solver
+        │             ▼               ▼              ├─ Ceres
+        │       Motion Model   Measurement Model     ├─ GTSAM
+        │                                              └─ g2o
         │
-        └──────────────────────────────┐
-                                       ▼
-                                  Map Manager
+        │
+        └──────────────────────────────────────────────────────────────────────────────┐
+                                                                                       │
+                                                                                       ▼
+                                                                                  Map Manager
+                                                                                       │
+                                                                                       ▼
+                                                                                  Map / Landmarks
 ```
 
 ### Sensors: Calibration, Drivers, Dataset Player, Data Source
