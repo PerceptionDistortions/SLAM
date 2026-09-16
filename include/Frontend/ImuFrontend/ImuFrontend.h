@@ -1,17 +1,15 @@
 #pragma once
 
+#include "Sensors/SensorDataClasses/ImuData.h"
 #include "Estimation/Measurement/Measurement.h"
-
 
 #include <memory>
 
-class LidarScan;
-
-class LidarFrontend
+class ImuFrontend
 {
 public:
-    virtual ~LidarFrontend() = default;
+    virtual ~ImuFrontend() = default;
 
     virtual std::unique_ptr<Measurement> process(
-        const LidarScan& scan) = 0;
+        const ImuData& data) = 0;
 };

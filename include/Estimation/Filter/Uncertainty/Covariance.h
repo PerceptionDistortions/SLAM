@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Filter/Uncertainty/Uncertainty.h"
+#include "Estimation/Filter/Uncertainty/Uncertainty.h"
 
 #include <Eigen/Core>
 
 class Covariance : public Uncertainty
 {
 public:
-    static constexpr int StateDimension = 9;
+    static constexpr int StateDimension = 15;
 
     Covariance();
 
@@ -16,8 +16,11 @@ public:
 
     void reset() override;
 
-    void set(const Eigen::Matrix<double, StateDimension, StateDimension>& covariance);
+    void set(
+        const Eigen::Matrix<double,
+                            StateDimension,
+                            StateDimension>& covariance);
 
 private:
-    Eigen::Matrix<double, StateDimension, StateDimension> _covariance;
+    Eigen::MatrixXd _covariance;
 };

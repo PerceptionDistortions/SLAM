@@ -2,7 +2,7 @@
 
 #include "Estimation/Filter/Predictor/Predictor.h"
 
-class ConstantVelocityPredictor : public Predictor
+class IMUPredictor : public Predictor
 {
 public:
     void predictNominal(

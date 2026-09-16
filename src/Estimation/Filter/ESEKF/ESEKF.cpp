@@ -28,131 +28,90 @@ void ESEKF::initialize(const StateEstimate& initialState)
         These values should eventually be configurable.
     */
 
-    Eigen::Matrix<double, 9, 9> P;
+    Eigen::Matrix<double, 15, 15> P;
     P.setZero();
 
     P.block<3, 3>(0, 0) = 0.1 * 0.1 * Eigen::Matrix3d::Identity();
     P.block<3, 3>(3, 3) = 0.5 * 0.5 * Eigen::Matrix3d::Identity();
     P.block<3, 3>(6, 6) = 0.1 * 0.1 * Eigen::Matrix3d::Identity();
+    P.block<3, 3>(9, 9) = 0.01 * 0.01 * Eigen::Matrix3d::Identity();
+    P.block<3, 3>(12, 12) = 0.01 * 0.01 * Eigen::Matrix3d::Identity();
+
     _covariance.set(P);
     _initialized = true;
 }
 
 
-void ESEKF::process(
-    const Measurement& measurement)
+void ESEKF::process(const Measurement& measurement)
 {
+    //INIT CHECK
     if (!_initialized)
     {
-        throw std::runtime_error(
-            "ErrorStateEKF must be initialized before processing measurements.");
+        throw std::runtime_error("ESEKF must be initialized before processing measurements.");
     }
 
-    const double timestamp = measurement.timestamp();
-    const double dt = timestamp - _nominalState.timestamp;
+    const double dt =measurement.timestamp() -_nominalState.timestamp;
+
+    //TIME GUARD
     if (dt < 0.0)
     {
-        throw std::runtime_error(
-            "Measurement timestamp is older than estimator state.");
+        throw std::runtime_error("Measurement timestamp is older than estimator state.");
     }
 
-    /*
-        Prediction
-    */
+    const auto role = measurement.role();
 
-    if (dt > 0.0)
+    if (dt > 0.0 &&
+        (role == MeasurementRole::Prediction ||
+         role == MeasurementRole::PredictionAndCorrection))
     {
-        predict(dt);
+        predict(measurement);
     }
 
-    /*
-        Correction
-    */
+    if (role == MeasurementRole::Correction ||
+        role == MeasurementRole::PredictionAndCorrection)
+    {
+        _corrector->correct(
+            _nominalState,
+            _errorState,
+            _covariance,
+            measurement);
+    }
 
-    _corrector->correct(
-        _nominalState,
-        _errorState,
-        _covariance,
-        measurement);
+    _nominalState.timestamp =
+        measurement.timestamp();
+}
 
-    _nominalState.timestamp = timestamp;
+void ESEKF::predict(
+    const Measurement& measurement)
+{
+    // 1. Propagate nominal state
+    _predictor->predictNominal(_nominalState,measurement);
+
+    // 2. Get model-specific error-state Jacobian
+    const Eigen::MatrixXd F =
+        _predictor->computeF(
+            _nominalState,
+            measurement);
+
+    // 3. Get model-specific process noise
+    const Eigen::MatrixXd Q =
+        _predictor->computeQ(
+            _nominalState,
+            measurement);
+
+    // 4. Propagate covariance
+    propagateCovariance(F, Q);
 }
 
 
-void ESEKF::predict(double dt)
+void ESEKF::propagateCovariance(
+    const Eigen::MatrixXd& F,
+    const Eigen::MatrixXd& Q)
 {
-    /*
-        Propagate nominal state.
-    */
-
-    _predictor->predict(
-        _nominalState,
-        dt);
-
-    /*
-        Propagate covariance.
-    */
-
-    propagateCovariance(dt);
-}
-
-
-void ESEKF::propagateCovariance(double dt)
-{
-    /*
-        Constant-velocity error-state transition:
-
-        δp' = δp + δv dt
-        δv' = δv
-        δθ' = δθ
-
-        Therefore:
-
-        F =
-
-        [ I  I*dt  0
-          0   I    0
-          0   0    I ]
-    */
-
-    Eigen::Matrix<double, 9, 9> F =
-        Eigen::Matrix<double, 9, 9>::Identity();
-
-    F.block<3, 3>(0, 3) =
-        dt * Eigen::Matrix3d::Identity();
-
-    /*
-        Process noise.
-
-        This is intentionally simple.
-
-        A more complete implementation would derive Q
-        from acceleration/angular-velocity noise.
-    */
-
-    Eigen::Matrix<double, 9, 9> Q;
-    Q.setZero();
-
-    constexpr double positionNoise = 0.01;
-    constexpr double velocityNoise = 0.05;
-    constexpr double orientationNoise = 0.01;
-
-    Q.block<3, 3>(0, 0) =
-        positionNoise * positionNoise *
-        dt * Eigen::Matrix3d::Identity();
-
-    Q.block<3, 3>(3, 3) =
-        velocityNoise * velocityNoise *
-        dt * Eigen::Matrix3d::Identity();
-
-    Q.block<3, 3>(6, 6) =
-        orientationNoise * orientationNoise *
-        dt * Eigen::Matrix3d::Identity();
-
-    const Eigen::Matrix<double, 9, 9>& P =
+    const Eigen::MatrixXd& P =
         _covariance.matrix();
 
-    Eigen::Matrix<double, 9, 9> propagatedP =
+    const Eigen::MatrixXd propagatedP =
         F * P * F.transpose() + Q;
 
     _covariance.matrix() = propagatedP;

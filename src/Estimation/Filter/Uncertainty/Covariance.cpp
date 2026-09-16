@@ -1,4 +1,4 @@
-#include "Filter/Uncertainty/Covariance.h"
+#include "Estimation/Filter/Uncertainty/Covariance.h"
 
 Covariance::Covariance()
 {
@@ -17,11 +17,16 @@ const Eigen::MatrixXd& Covariance::matrix() const
 
 void Covariance::reset()
 {
-    _covariance.setIdentity();
+    _covariance =
+        Eigen::MatrixXd::Identity(
+            StateDimension,
+            StateDimension);
 }
 
 void Covariance::set(
-    const Eigen::Matrix<double, StateDimension, StateDimension>& covariance)
+    const Eigen::Matrix<double,
+                        StateDimension,
+                        StateDimension>& covariance)
 {
     _covariance = covariance;
 }

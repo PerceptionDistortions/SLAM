@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SensorDataClasses/CameraData.h"
+#include "Sensors/SensorDataClasses/CameraData.h"
 
 class MonocularFrame
 {

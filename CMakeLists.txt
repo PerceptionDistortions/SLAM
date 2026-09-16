@@ -28,6 +28,7 @@ target_link_libraries(slam_core INTERFACE
 # Application
 add_executable(slam_app
     src/main.cpp
+
     # Sensors
     src/Sensors/Buffers/BufferManager.cpp
 
@@ -49,11 +50,26 @@ add_executable(slam_app
     src/Sensors/SensorContext/SensorContext.cpp
     src/Sensors/SensorManager/SensorManager.cpp
 
-    # Feature detection
-    
-
     # Visualization
     src/Visualization/PangolinVIsualizer.cpp
+
+    # Estimation
+    src/Estimation/Filter/Corrector/MonocularVisualCorrector.cpp
+    src/Estimation/Filter/ESEKF/ESEKF.cpp
+    src/Estimation/Filter/Predictor/ConstantVelocityPredictor.cpp
+    src/Estimation/Filter/State/ErrorState.cpp
+    src/Estimation/Filter/State/NominalState.cpp
+    src/Estimation/Filter/Uncertainty/Covariance.cpp
+
+    # Measurement
+    src/Estimation/Measurement/MonocularVisualMeasurement.cpp
+
+    # Frontend
+    src/Frontend/Frontend.cpp
+
+    # SLAM System
+    src/SLAMSystem/SLAMSystem.cpp
+    src/SLAMSystem/MonocularEKFSLAMSystem.cpp
 )
 
 target_include_directories(slam_app PRIVATE

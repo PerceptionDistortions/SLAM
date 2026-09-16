@@ -1,11 +1,15 @@
 #pragma once
 
+#include "Sensors/SensorDataClasses/MonocularFrame.h"
+#include "Estimation/Measurement/Measurement.h"
+
+#include <memory>
+
 class VisualFrontend
 {
 public:
     virtual ~VisualFrontend() = default;
 
-    virtual void init() = 0;
-    virtual void process() = 0;
-    virtual void reset() = 0;
+    virtual std::unique_ptr<Measurement> process(
+        const MonocularFrame& frame) = 0;
 };

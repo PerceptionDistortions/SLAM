@@ -1,26 +1,32 @@
 #pragma once
 
-#include "Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.h"
+#include "Frontend/VisualFrontend/VisualFrontend.h"
 
 class MonocularVisualFrontend : public VisualFrontend
 {
 public:
     ~MonocularVisualFrontend() override = default;
 
-    void init() override;
-    void process() override;
-    void reset() override;
+    std::unique_ptr<Measurement> process(
+        const MonocularFrame& frame) override;
 
 private:
-    void preprocessImage();
+    void preprocessImage(
+        const MonocularFrame& frame);
+
     void detectFeatures();
+
     void trackFeatures();
+
     void matchFeatures();
 
     void estimateMotion();
+
     void validateMotion();
 
     void triangulate();
+
     void manageLandmarks();
+
     void manageKeyframes();
 };

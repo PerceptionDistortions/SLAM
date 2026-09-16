@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-
+#include<string>
 #include <opencv2/core/mat.hpp>
 
 class CameraData{
