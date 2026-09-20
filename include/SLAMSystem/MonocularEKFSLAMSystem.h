@@ -5,6 +5,7 @@
 class MonocularEKFSLAMSystem : public SLAMSystem
 {
 public:
+    explicit MonocularEKFSLAMSystem(const Config& config);  
     ~MonocularEKFSLAMSystem() override = default;
 
     void init() override;
