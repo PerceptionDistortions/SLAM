@@ -65,7 +65,7 @@ add_executable(slam_app
     src/Estimation/Measurement/MonocularVisualMeasurement.cpp
 
     # Frontend
-    src/Frontend/Frontend.cpp
+    src/Frontend/FrontendManager.cpp
 
     # SLAM System
     src/SLAMSystem/SLAMSystem.cpp

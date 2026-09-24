@@ -2,10 +2,11 @@
 
 #include "Sensors/SensorDataClasses/ImuData.h"
 #include "Estimation/Measurement/Measurement.h"
+#include "Frontend/Frontend.h"
 
 #include <memory>
 
-class ImuFrontend
+class ImuFrontend:public Frontend
 {
 public:
     virtual ~ImuFrontend() = default;

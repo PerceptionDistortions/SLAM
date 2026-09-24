@@ -2,10 +2,11 @@
 
 #include "Sensors/SensorDataClasses/MonocularFrame.h"
 #include "Estimation/Measurement/Measurement.h"
+#include"Frontend/Frontend.h"
 
 #include <memory>
 
-class VisualFrontend
+class VisualFrontend:public Frontend
 {
 public:
     virtual ~VisualFrontend() = default;

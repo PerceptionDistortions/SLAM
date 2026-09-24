@@ -5,8 +5,8 @@
 #include "Estimation/Filter/Corrector/MonocularVisualCorrector.h"
 #include "Estimation/Measurement/MonocularVisualMeasurement.h"
 
-#include "Frontend/MonocularVisualFrontend.h"
-#include "SensorManager/SensorManager.h"
+#include "Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.h"
+#include"Factory/SLAMSystemDependencies.h"
 
 #include <memory>
 #include <stdexcept>
@@ -14,30 +14,15 @@
 
 
 MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
-    const Config& config)
+    const SystemConfig& config,
+    SLAMSystemDependencies dependencies)
 {
-    // --------------------------------------------------
-    // Compose the concrete SLAM system
-    // --------------------------------------------------
-
-    sensor_manager_ =
-        std::make_unique<SensorManager>(config);
-
-    frontend_ =
-        std::make_unique<MonocularVisualFrontend>(config);
-
-    estimator_ =
-        std::make_unique<ESEKF>(
-            std::make_unique<ConstantVelocityPredictor>(),
-            std::make_unique<MonocularVisualCorrector>());
-
-    // Construct other modules here when implemented.
-    //
-    // backend_ =
-    //     std::make_unique<...>(config);
-    //
-    // visualizer_ =
-    //     std::make_unique<...>(config);
+    sensor_manager_ =std::move(dependencies.sensorManager);
+    frontend_ =std::move(dependencies.frontend);
+    estimator_ =std::move(dependencies.estimator);
+    visualizer_ =std::move(dependencies.visualizer);
+    backend_ =std::move(dependencies.backend);
+    loop_closure_ =std::move(dependencies.loopClosure);
 }
 
 
@@ -52,9 +37,9 @@ void MonocularEKFSLAMSystem::init()
     // Runtime initialization
     // --------------------------------------------------
 
-    sensor_manager_->initialize();
+    sensor_manager_->init();
 
-    frontend_->initialize();
+    frontend_->init();
 
     estimator_initialized_ = false;
     running_ = false;
@@ -80,14 +65,13 @@ void MonocularEKFSLAMSystem::update()
         return;
     }
 
-    // Monocular system currently processes camera data.
+    // IF NO CAMERA DATA, IGNORE
     if (!std::holds_alternative<CameraData>(data))
     {
         return;
     }
 
-    const CameraData& cameraData =
-        std::get<CameraData>(data);
+    const CameraData& cameraData =std::get<CameraData>(data);
 
     // --------------------------------------------------
     // Sensor data → visual frontend
@@ -95,14 +79,8 @@ void MonocularEKFSLAMSystem::update()
 
     MonocularFrame frame;
     frame.camera = cameraData;
-
-    std::unique_ptr<Measurement> measurement =
-        frontend_->processMonocular(frame);
-
-    if (!measurement)
-    {
-        return;
-    }
+    std::unique_ptr<Measurement> measurement =frontend_->processMonocular(frame);
+    if (!measurement) return;
 
     // --------------------------------------------------
     // First valid measurement initializes estimator
@@ -123,25 +101,14 @@ void MonocularEKFSLAMSystem::update()
 
         StateEstimate initialState;
 
-        initialState.timestamp =
-            visualMeasurement->timestamp();
-
-        initialState.position =
-            visualMeasurement->position();
-
+        initialState.timestamp =visualMeasurement->timestamp();
+        initialState.position =visualMeasurement->position();
         initialState.velocity.setZero();
-
-        initialState.orientation =
-            visualMeasurement->orientation();
-
+        initialState.orientation =visualMeasurement->orientation();
         initialState.accelerometerBias.setZero();
-
         initialState.gyroscopeBias.setZero();
-
         estimator_->initialize(initialState);
-
         estimator_initialized_ = true;
-
         return;
     }
 

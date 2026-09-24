@@ -1,39 +1,85 @@
 # ============================================================
-# SLAM SYSTEM GLOBAL PARAMETERS
+# SLAM SYSTEM
 # ============================================================
 
 system:
   mode: monocular
   visualizer: pangolin
 
+
 # ============================================================
-# SENSORS AND DATA HANDLING
+# DATA SOURCES
+#
+# A data source represents the origin of sensor data.
+#
+# Supported:
+#   dataset  -> recorded datasets
+#   physical -> live hardware
+#
+# Sensors reference a data source through source_id.
 # ============================================================
 
 data_sources:
-  type: dataset
 
-  dataset:
-    name: euroc
-    path: "datasets/euroc"
+  # ----------------------------------------------------------
+  # EuRoC Dataset
+  # ----------------------------------------------------------
 
-  playback:
-    realtime: true
-    rate: 1.0
+  - id: euroc
+    type: dataset
+
+    dataset:
+      name: euroc
+      path: "datasets/euroc"
+
+    playback:
+      realtime: true
+      rate: 1.0
+
+
+  # ----------------------------------------------------------
+  # Example Physical Source
+  #
+  # Disabled/not used by the current configuration.
+  # Keep as a template for live hardware.
+  # ----------------------------------------------------------
+
+  # - id: live_camera
+  #   type: physical
+  #
+  #   physical:
+  #     transport: usb
+  #
+  #
+  # - id: live_imu
+  #   type: physical
+  #
+  #   physical:
+  #     transport: serial
+
 
 # ============================================================
 # SENSOR CONFIGURATION
+#
+# Every sensor references a data source through source_id.
 # ============================================================
 
 sensors:
 
+  # ----------------------------------------------------------
+  # Camera 0
+  # ----------------------------------------------------------
+
   - id: cam0
+
     type: camera
-    source: dataset
+
+    source_id: euroc
     driver: euroc
 
     config:
       stream: cam0
+
       data_path: "mav0/cam0/data"
       csv: "mav0/cam0/data.csv"
 
@@ -42,13 +88,24 @@ sensors:
         name: euroc_yaml
         file: "mav0/cam0/sensor.yaml"
 
+
+  # ----------------------------------------------------------
+  # Camera 1
+  #
+  # Available for stereo configurations.
+  # Not consumed by the current monocular configuration.
+  # ----------------------------------------------------------
+
   - id: cam1
+
     type: camera
-    source: dataset
+
+    source_id: euroc
     driver: euroc
 
     config:
       stream: cam1
+
       data_path: "mav0/cam1/data"
       csv: "mav0/cam1/data.csv"
 
@@ -57,13 +114,21 @@ sensors:
         name: euroc_yaml
         file: "mav0/cam1/sensor.yaml"
 
+
+  # ----------------------------------------------------------
+  # IMU
+  # ----------------------------------------------------------
+
   - id: imu0
+
     type: imu
-    source: dataset
+
+    source_id: euroc
     driver: euroc
 
     config:
       stream: imu0
+
       csv: "mav0/imu0/data.csv"
 
       calibration:
@@ -71,10 +136,473 @@ sensors:
         name: euroc_yaml
         file: "mav0/imu0/sensor.yaml"
 
+
 # ============================================================
-# VISUAL FRONTEND CONFIGURATION
+# FRONTEND
 # ============================================================
 
-visual_frontend:
-  detector_descriptor: orb
-  feature_matching:
+frontend:
+
+  # ==========================================================
+  # VISUAL FRONTEND
+  # ==========================================================
+
+  visual:
+
+    enabled: true
+
+
+    detector_descriptor:
+
+      type: orb
+
+      n_features: 2000
+      scale_factor: 1.2
+      n_levels: 8
+
+
+    preprocessing:
+
+      grayscale: true
+      undistort: true
+
+
+    feature_matching:
+
+      type: bf
+      descriptor: hamming
+
+      ratio_test: 0.75
+      cross_check: false
+
+
+    geometric_verification:
+
+      enabled: true
+
+      method: ransac
+
+      max_reprojection_error: 3.0
+
+
+    motion_estimation:
+
+      enabled: true
+
+
+    triangulation:
+
+      enabled: true
+
+      min_parallax: 1.0
+      max_reprojection_error: 3.0
+
+
+    tracking:
+
+      enabled: true
+
+      min_tracked_features: 100
+
+
+    landmark_management:
+
+      enabled: true
+
+
+    keyframe_selection:
+
+      enabled: true
+
+
+  # ==========================================================
+  # IMU FRONTEND
+  # ==========================================================
+
+  imu:
+
+    enabled: false
+
+    preprocessing:
+
+      remove_bias: true
+      noise_model: continuous
+
+
+    preintegration:
+
+      enabled: false
+
+
+  # ==========================================================
+  # LIDAR FRONTEND
+  # ==========================================================
+
+  lidar:
+
+    enabled: false
+
+
+# ============================================================
+# ESTIMATOR
+# ============================================================
+
+estimator:
+
+  # filter | optimization
+  type: filter
+
+
+  # ==========================================================
+  # FILTER ESTIMATOR
+  # ==========================================================
+
+  filter:
+
+    # esekf
+    type: esekf
+
+
+    # --------------------------------------------------------
+    # Prediction
+    # --------------------------------------------------------
+
+    prediction:
+
+      # constant_velocity | imu
+      type: constant_velocity
+
+
+      constant_velocity:
+
+        enabled: true
+
+
+      imu:
+
+        enabled: false
+
+
+    # --------------------------------------------------------
+    # Correction
+    # --------------------------------------------------------
+
+    correction:
+
+      visual:
+
+        enabled: true
+
+        # monocular | stereo
+        type: monocular
+
+
+  # ==========================================================
+  # OPTIMIZATION ESTIMATOR
+  # ==========================================================
+
+  optimization:
+
+    enabled: false
+
+    type: sliding_window
+
+    window_size: 10
+
+
+    factors:
+
+      visual:
+        enabled: true
+
+      imu:
+        enabled: false
+
+
+    marginalization:
+
+      enabled: true
+
+
+    solver:
+
+      type: ceres
+      algorithm: levenberg_marquardt
+      max_iterations: 20
+
+
+# ============================================================
+# BACKEND
+#
+# Backend is independent from the estimator.
+# ============================================================
+
+backend:
+
+  enabled: true
+
+
+  # ==========================================================
+  # LOCAL OPTIMIZATION
+  # ==========================================================
+
+  local:
+
+    enabled: true
+
+    type: bundle_adjustment
+
+    window_size: 10
+
+
+    optimize:
+
+      poses: true
+      landmarks: true
+      intrinsics: false
+      extrinsics: false
+
+
+    solver:
+
+      type: ceres
+      algorithm: levenberg_marquardt
+      max_iterations: 20
+
+
+  # ==========================================================
+  # GLOBAL OPTIMIZATION
+  # ==========================================================
+
+  global:
+
+    enabled: true
+
+    type: bundle_adjustment
+
+
+    optimize:
+
+      poses: true
+      landmarks: true
+      intrinsics: false
+      extrinsics: false
+
+
+    solver:
+
+      type: ceres
+      algorithm: levenberg_marquardt
+      max_iterations: 50
+
+
+  # ==========================================================
+  # POSE GRAPH OPTIMIZATION
+  # ==========================================================
+
+  pose_graph:
+
+    enabled: true
+
+
+    optimize:
+
+      poses: true
+
+
+    solver:
+
+      type: ceres
+      algorithm: levenberg_marquardt
+      max_iterations: 50
+
+
+# ============================================================
+# LOOP CLOSURE
+# ============================================================
+
+loop_closure:
+
+  enabled: true
+
+
+  # ==========================================================
+  # PLACE RECOGNITION
+  # ==========================================================
+
+  place_recognition:
+
+    type: bow
+
+
+    vocabulary:
+
+      file: "config/vocabulary.yml"
+
+
+    similarity_threshold: 0.75
+
+    min_temporal_distance: 30
+
+
+  # ==========================================================
+  # CANDIDATE VERIFICATION
+  # ==========================================================
+
+  candidate_verification:
+
+    enabled: true
+
+
+    feature_matching:
+
+      enabled: true
+
+
+    geometric_verification:
+
+      enabled: true
+
+      method: pnp_ransac
+
+      min_inliers: 30
+
+      max_reprojection_error: 3.0
+
+
+  # ==========================================================
+  # LOOP CONSTRAINT
+  # ==========================================================
+
+  constraint:
+
+    enabled: true
+
+    type: se3
+
+    min_inliers: 30
+
+    max_reprojection_error: 3.0
+
+
+  # ==========================================================
+  # LOOP CONFIRMATION
+  # ==========================================================
+
+  confirmation:
+
+    enabled: true
+
+    min_consistent_matches: 3
+
+
+# ============================================================
+# MAP
+# ============================================================
+
+map:
+
+  landmarks:
+
+    enabled: true
+
+
+  keyframes:
+
+    enabled: true
+
+
+  local_map:
+
+    enabled: true
+
+
+  global_map:
+
+    enabled: true
+
+
+# ============================================================
+# OUTPUT
+# ============================================================
+
+output:
+
+  trajectory:
+
+    enabled: true
+
+    format: tum
+
+    path: "output/trajectory.txt"
+
+
+  landmarks:
+
+    enabled: true
+
+    path: "output/landmarks.ply"
+
+
+  metrics:
+
+    enabled: true
+
+    path: "output/metrics"
+
+
+  covariance:
+
+    enabled: true
+
+
+# ============================================================
+# EVALUATION
+# ============================================================
+
+evaluation:
+
+  enabled: true
+
+
+  metrics:
+
+    ate:
+
+      enabled: true
+
+
+    rpe:
+
+      enabled: true
+
+
+  ground_truth:
+
+    enabled: true
+
+    path: "datasets/euroc"
+
+
+# ============================================================
+# LOGGING
+# ============================================================
+
+logging:
+
+  level: info
+
+
+  modules:
+
+    sensor_manager: true
+    buffer_manager: true
+    frontend: true
+    estimator: true
+    backend: true
+    loop_closure: true
+
+
+  save_logs: true
+
+  path: "output/logs"

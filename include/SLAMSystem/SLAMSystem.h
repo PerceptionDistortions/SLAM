@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Sensors/SensorManager/SensorManager.h"
-#include "Frontend/Frontend.h"
+#include "Frontend/FrontendManager.h"
 #include "Estimation/Estimator.h"
 #include "Visualization/Visualizer.h"
-#include"Backend/Backend.h"
-#include"LoopClosure/LoopClosure.h"
+#include "Backend/Backend.h"
+#include "LoopClosure/LoopClosure.h"
 
 #include <memory>
 
@@ -21,7 +21,7 @@ public:
 
 protected:
     std::unique_ptr<SensorManager> sensor_manager_;
-    std::unique_ptr<Frontend> frontend_;
+    std::unique_ptr<FrontendManager> frontend_;
     std::unique_ptr<Estimator> estimator_;
     std::unique_ptr<Visualizer> visualizer_;
 

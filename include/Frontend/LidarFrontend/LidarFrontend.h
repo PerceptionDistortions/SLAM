@@ -1,13 +1,14 @@
 #pragma once
 
 #include "Estimation/Measurement/Measurement.h"
+#include"Frontend/Frontend.h"
 
 
 #include <memory>
 
 class LidarScan;
 
-class LidarFrontend
+class LidarFrontend:public Frontend
 {
 public:
     virtual ~LidarFrontend() = default;

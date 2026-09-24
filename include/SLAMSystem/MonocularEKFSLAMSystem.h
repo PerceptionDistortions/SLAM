@@ -1,11 +1,17 @@
 #pragma once
 
 #include "SLAMSystem/SLAMSystem.h"
+#include"Sensors/SensorManager/SensorManager.h"
 
 class MonocularEKFSLAMSystem : public SLAMSystem
 {
 public:
-    explicit MonocularEKFSLAMSystem(const Config& config);  
+    //CONSTRUCTOR
+    MonocularEKFSLAMSystem(
+        const SystemConfig& config,
+        SLAMSystemDependencies dependencies);
+    
+    //DESTRUCTOR
     ~MonocularEKFSLAMSystem() override = default;
 
     void init() override;
