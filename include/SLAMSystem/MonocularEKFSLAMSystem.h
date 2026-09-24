@@ -1,12 +1,16 @@
 #pragma once
 
 #include "SLAMSystem/SLAMSystem.h"
-#include"Sensors/SensorManager/SensorManager.h"
+#include "Configuration/Configs/SystemConfig.h"
+#include "Factory/SLAMSystemDependencies.h"
+
+#include <memory>
 
 class MonocularEKFSLAMSystem : public SLAMSystem
 {
 public:
     //CONSTRUCTOR
+    //FEEDS DATA INTO THE PARENT CLASS
     MonocularEKFSLAMSystem(
         const SystemConfig& config,
         SLAMSystemDependencies dependencies);

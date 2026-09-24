@@ -16,6 +16,10 @@ public:
 
     std::unique_ptr<Measurement> process(const MonocularFrame& frame) override;
 
+    void init() override;
+    void proces() override;
+    void shutdown() override;
+
 private:
     //OWN FRONTEND CONFIGURATION
     //CONST BECAUSE SYSTEM CONFIG ALREADY OWNS IT

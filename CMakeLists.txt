@@ -68,8 +68,10 @@ add_executable(slam_app
     src/Frontend/FrontendManager.cpp
 
     # SLAM System
-    src/SLAMSystem/SLAMSystem.cpp
     src/SLAMSystem/MonocularEKFSLAMSystem.cpp
+
+    #Configuration
+    src/Configuration/ConfigLoader.cpp
 )
 
 target_include_directories(slam_app PRIVATE

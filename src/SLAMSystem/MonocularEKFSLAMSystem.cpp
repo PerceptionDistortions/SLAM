@@ -65,21 +65,7 @@ void MonocularEKFSLAMSystem::update()
         return;
     }
 
-    // IF NO CAMERA DATA, IGNORE
-    if (!std::holds_alternative<CameraData>(data))
-    {
-        return;
-    }
-
-    const CameraData& cameraData =std::get<CameraData>(data);
-
-    // --------------------------------------------------
-    // Sensor data → visual frontend
-    // --------------------------------------------------
-
-    MonocularFrame frame;
-    frame.camera = cameraData;
-    std::unique_ptr<Measurement> measurement =frontend_->processMonocular(frame);
+    std::unique_ptr<Measurement> measurement =frontend_->process(data);
     if (!measurement) return;
 
     // --------------------------------------------------

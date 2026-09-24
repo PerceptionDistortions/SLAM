@@ -1,4 +1,4 @@
-#include "Factory/SLAMSystemFactory"
+#include "Factory/SLAMSystemFactory.h"
 
 #include <stdexcept>
 #include <utility>
@@ -39,7 +39,7 @@
 #include "Visualization/PangolinVisualizer.h"
 
 //CALLED AND OWNED BY MAIN APP
-#include "Factory/SLAMSystemFactory"
+#include "Factory/SLAMSystemFactory.h"
 
 #include <stdexcept>
 #include <utility>
@@ -98,7 +98,7 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     //FRONTEND NEEDS THREE TYPES OF FRONTEND, WE NEED ONE ONLY
     auto visualFrontend =std::make_unique<MonocularVisualFrontend>(config.frontend);
 
-    dependencies.frontend =std::make_unique<Frontend>(
+    dependencies.frontend =std::make_unique<FrontendManager>(
             nullptr,
             std::move(visualFrontend),
             nullptr);

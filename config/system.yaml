@@ -1,30 +1,14 @@
-# ============================================================
-# SLAM SYSTEM
-# ============================================================
-
+#SLAM SYSTEM
+#ADD DEBUG HERE LATER
 system:
   mode: monocular
   visualizer: pangolin
 
 
-# ============================================================
-# DATA SOURCES
-#
-# A data source represents the origin of sensor data.
-#
-# Supported:
-#   dataset  -> recorded datasets
-#   physical -> live hardware
-#
-# Sensors reference a data source through source_id.
-# ============================================================
-
+#DATA SOURCES, ID, PHYSICAL SENSORS, DATASETS
 data_sources:
 
-  # ----------------------------------------------------------
-  # EuRoC Dataset
-  # ----------------------------------------------------------
-
+  #EUROC DATASET
   - id: euroc
     type: dataset
 
@@ -302,16 +286,11 @@ estimator:
   # ==========================================================
 
   optimization:
-
     enabled: false
-
     type: sliding_window
-
     window_size: 10
 
-
     factors:
-
       visual:
         enabled: true
 
@@ -339,7 +318,7 @@ estimator:
 
 backend:
 
-  enabled: true
+  enabled: false
 
 
   # ==========================================================
@@ -423,7 +402,7 @@ backend:
 
 loop_closure:
 
-  enabled: true
+  enabled: false
 
 
   # ==========================================================
@@ -561,21 +540,15 @@ output:
 # ============================================================
 
 evaluation:
-
   enabled: true
-
 
   metrics:
 
     ate:
-
       enabled: true
-
 
     rpe:
-
       enabled: true
-
 
   ground_truth:
 

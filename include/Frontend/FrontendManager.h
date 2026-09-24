@@ -1,4 +1,7 @@
+#pragma once
+
 #include<memory>
+
 #include"Frontend/VisualFrontend/Pipeline/VisualFrontend.h"
 #include"Frontend/ImuFrontend/ImuFrontend.h"
 #include"Frontend/LidarFrontend/LidarFrontend.h"

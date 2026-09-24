@@ -39,3 +39,32 @@ FrontendManager::processVisual(const MonocularFrame& frame)
     }
     return visualFrontend_->process(frame);
 }
+
+bool FrontendManager::init()
+{
+    if (initialized_)
+        return true;
+
+    if (visualFrontend_)
+        visualFrontend_->init();
+
+    if (imuFrontend_)
+        imuFrontend_->init();
+
+    if (lidarFrontend_)
+        lidarFrontend_->init();
+
+    initialized_ = true;
+    return true;
+}
+
+std::unique_ptr<Measurement> FrontendManager::process(const SensorData& data)
+{
+    // if (!initialized_)
+    //     throw std::runtime_error("FrontendManager must be initialized before processing.");
+
+    // return std::visit([this](const auto& sensorData) {
+    //     return processSensor(sensorData);
+    // }, data);
+    return nullptr;
+}
