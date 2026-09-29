@@ -63,44 +63,51 @@ bool SensorManager::loadConfig(const std::string& config_path)
 {
     try
     {
-        // ============================================================
-        // LOAD GLOBAL CONFIGURATION OF SLAM FROM YAML
-        // ============================================================
-
+        //LOAD CONFIG FROM YAML
+        //CHECK IF NO CONFIG EXISTS
         YAML::Node config = YAML::LoadFile(config_path);
-
-
-        // ============================================================
-        // DATA SOURCE CONFIGURATION
-        // ============================================================
-
         if (!config["data_sources"])
         {
-            std::cerr
-                << "Error: data_sources configuration missing\n";
-
+            std::cerr<< "Error: data_sources configuration missing\n";
             return false;
         }
 
-        const YAML::Node data_sources =
-            config["data_sources"];
-
-
-        // ============================================================
-        // CHECK DATASET CONFIGURATION
-        // ============================================================
-
-        if (!data_sources["dataset"])
+        const YAML::Node data_sources =config["data_sources"];
+        if (!data_sources.IsSequence())
         {
-            std::cerr
-                << "Error: dataset configuration missing\n";
+            std::cerr << "Error: data_sources must be a sequence\n";
+            return false;
+        }
 
+        // Find the EuroC data source
+        YAML::Node euroc_source;
+
+        for (const auto& source : data_sources)
+        {
+            YAML::Node source_node = source;
+
+            if (source_node["id"] &&
+                source_node["id"].as<std::string>() == "euroc")
+            {
+                euroc_source = source_node;
+                break;
+            }
+        }
+
+        if (!euroc_source)
+        {
+            std::cerr << "Error: euroc data source missing\n";
+            return false;
+        }
+
+        if (!euroc_source["dataset"])
+        {
+            std::cerr << "Error: dataset configuration missing\n";
             return false;
         }
 
         const YAML::Node dataset =
-            data_sources["dataset"];
-
+            euroc_source["dataset"];
 
         // ============================================================
         // DATASET NAME
@@ -206,7 +213,7 @@ bool SensorManager::loadConfig(const std::string& config_path)
             // DATA SOURCE
             // ========================================================
 
-            if (!sensor_node["source"])
+            if (!sensor_node["source_id"])
             {
                 std::cerr
                     << "Error: sensor source missing for sensor: "
@@ -216,7 +223,7 @@ bool SensorManager::loadConfig(const std::string& config_path)
             }
 
             const std::string source =
-                sensor_node["source"].as<std::string>();
+                sensor_node["source_id"].as<std::string>();
 
 
             // ========================================================
@@ -240,7 +247,7 @@ bool SensorManager::loadConfig(const std::string& config_path)
             // VALIDATE SOURCE / DRIVER
             // ========================================================
 
-            if (source != "dataset" ||
+            if (source != "euroc" ||
                 driver != "euroc")
             {
                 std::cerr
@@ -421,18 +428,18 @@ bool SensorManager::loadConfig(const std::string& config_path)
 
             PlaybackConfig playback_config;
 
-            if (data_sources["playback"])
+            if (euroc_source["playback"])
             {
-                if (data_sources["playback"]["realtime"])
+                if (euroc_source["playback"]["realtime"])
                 {
                     playback_config.realtime =
-                        data_sources["playback"]["realtime"].as<bool>();
+                        euroc_source["playback"]["realtime"].as<bool>();
                 }
 
-                if (data_sources["playback"]["rate"])
+                if (euroc_source["playback"]["rate"])
                 {
                     playback_config.rate =
-                        data_sources["playback"]["rate"].as<double>();
+                        euroc_source["playback"]["rate"].as<double>();
                 }
             }
 
