@@ -66,12 +66,16 @@ add_executable(slam_app
 
     # Frontend
     src/Frontend/FrontendManager.cpp
+    src/Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.cpp
 
     # SLAM System
     src/SLAMSystem/MonocularEKFSLAMSystem.cpp
 
     #Configuration
     src/Configuration/ConfigLoader.cpp
+
+    #Factory
+    src/Factory/SLAMSystemFactory.cpp
 )
 
 target_include_directories(slam_app PRIVATE

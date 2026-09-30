@@ -62,8 +62,8 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::create(const SystemConfig& config
     switch (config.system.mode)
     {
         case SLAMType::Monocular: return createMonocular(config);
-        case SLAMType::MonocularVI: return createMonocularVI(config);
-        case SLAMType::StereoVI: return createStereoVI(config);
+        case SLAMType::MonocularVI: throw std::runtime_error("Monocular VI-SLAM not implemented.");
+        case SLAMType::StereoVI:  throw std::runtime_error("Stereo VI-SLAM not implemented.");
         default:
             throw std::runtime_error("Unsupported SLAM type.");
     }
@@ -75,10 +75,11 @@ SLAMSystemDependencies SLAMSystemFactory::createDependencies(const SystemConfig&
 {
     SLAMSystemDependencies dependencies;
 
-    // Common infrastructure
+    //SENSOR MANAGER, BUFFER, CALIBRATION
+    dependencies.sensorManager =std::make_unique<SensorManager>();
 
+    //MAP MANAGER
     dependencies.mapManager =std::make_unique<MapManager>();
-    dependencies.sensorManager =std::make_unique<SensorManager>(config);
 
     // Other common dependencies...
 
@@ -93,11 +94,14 @@ SLAMSystemDependencies SLAMSystemFactory::createDependencies(const SystemConfig&
 std::unique_ptr<SLAMSystem>
 SLAMSystemFactory::createMonocular(const SystemConfig& config)
 {
+    //CREATES SENSORS
+    //CREATES MAPS
     SLAMSystemDependencies dependencies = createDependencies(config);
 
+    //CREATE FRONTEND: NEED THREE TYPES OF FRONTEND
+    //FRONTEND CONFIG
     //FRONTEND NEEDS THREE TYPES OF FRONTEND, WE NEED ONE ONLY
     auto visualFrontend =std::make_unique<MonocularVisualFrontend>(config.frontend);
-
     dependencies.frontend =std::make_unique<FrontendManager>(
             nullptr,
             std::move(visualFrontend),
@@ -113,26 +117,28 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
             std::move(corrector));
 
     //BACKEND IF ENABLED
-    if (config.backend.enabled)
-    {
-        dependencies.backend =std::make_unique<Backend>(config,dependencies.mapManager);
-    }
+    // if (config.backend.enabled)
+    // {
+    //     dependencies.backend =std::make_unique<Backend>(config.backend,
+    //         dependencies.mapManager);
+    // }
+    dependencies.backend=nullptr;
 
     //LOOP CLOSURE IF ENABLED
-    if (config.loopClosure.enabled)
-    {
-        dependencies.loopClosure =
-            std::make_unique<LoopClosure>(
-                config,
-                dependencies.mapManager);
-    }
+    // if (config.loopClosure.enabled)
+    // {
+    //     dependencies.loopClosure =
+    //         std::make_unique<LoopClosure>(config.loopClosure,dependencies.mapManager);
+    // }
+    dependencies.loopClosure=nullptr;
 
 
     //VISUALIZER: ENABLE ONLY IF TRUE IN CONFIG
-    if (config.system.visualizer == VisualizerType::Pangolin)
-    {
-        dependencies.visualizer =std::make_unique<PangolinVisualizer>(config);
-    }
+    // if (config.system.visualizer == VisualizerType::Pangolin)
+    // {
+    //     dependencies.visualizer =std::make_unique<PangolinVisualizer>(config);
+    // }
+    dependencies.visualizer=nullptr;
 
     //SLAM SYSTEM: FINAL
     return std::make_unique<MonocularEKFSLAMSystem>(config,std::move(dependencies));

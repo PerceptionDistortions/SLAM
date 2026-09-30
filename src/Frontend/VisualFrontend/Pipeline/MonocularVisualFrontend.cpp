@@ -6,11 +6,25 @@ MonocularVisualFrontend::MonocularVisualFrontend(const FrontendConfig& config)
     : config_(config)
 {}
 
+//OVERRIDEN METHODS
+bool MonocularVisualFrontend::init(){
+    return true;
+}
+
+bool MonocularVisualFrontend::process(){
+    return true;
+}
+
+void MonocularVisualFrontend::shutdown(){
+    
+}
+
 //TO BE IMPLEMENTED
 std::unique_ptr<Measurement>
 MonocularVisualFrontend::process(
     const MonocularFrame& frame)
 {}
+
 
 void MonocularVisualFrontend::preprocessImage(
     const MonocularFrame& frame)

@@ -12,9 +12,9 @@
 #include <stdexcept>
 #include <utility>
 
-
-MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
-    const SystemConfig& config,
+//CONSTRUCTOR
+//SLAM FACTORY HAS ALREADY CREATED EVERYTHING
+MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(const SystemConfig& config,
     SLAMSystemDependencies dependencies)
 {
     sensor_manager_ =std::move(dependencies.sensorManager);
@@ -26,29 +26,38 @@ MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
 }
 
 
-void MonocularEKFSLAMSystem::init()
+bool MonocularEKFSLAMSystem::init()
 {
     if (initialized_)
     {
-        return;
+        return true;
     }
 
-    // --------------------------------------------------
-    // Runtime initialization
-    // --------------------------------------------------
+    //INIT AND START SENSOR
+    if(!sensor_manager_->init()) return false;
+    if(!sensor_manager_->start()) return false;
 
-    sensor_manager_->init();
+    //INIT MAP MANAGER
 
-    frontend_->init();
+    //INIT FRONTEND
+    if(!frontend_->init()) return false;
+
+    //INIT BACKEND
+
+    //INIT LOOP CLOSURE
+
+    //INIT VISUALIZER
 
     estimator_initialized_ = false;
     running_ = false;
 
     initialized_ = true;
+
+    return true;
 }
 
 
-void MonocularEKFSLAMSystem::update()
+bool MonocularEKFSLAMSystem::update()
 {
     if (!initialized_)
     {
@@ -61,51 +70,90 @@ void MonocularEKFSLAMSystem::update()
 
     if (!sensor_manager_->popNext(data))
     {
-        running_ = false;
-        return;
+        return false;
     }
 
-    std::unique_ptr<Measurement> measurement =frontend_->process(data);
-    if (!measurement) return;
+    std::visit(
+        [](const auto& sensorData)
+        {
+            using T = std::decay_t<decltype(sensorData)>;
+
+            if constexpr (std::is_same_v<T, CameraData>)
+            {
+                std::cout
+                    << "[CAMERA]"
+                    << " sensor=" << sensorData.sensor_id
+                    << " timestamp=" << sensorData.timestamp
+                    << std::endl;
+            }
+            else if constexpr (std::is_same_v<T, ImuData>)
+            {
+                std::cout
+                    << "[IMU]"
+                    << " sensor=" << sensorData.sensor_id
+                    << " timestamp=" << sensorData.timestamp
+                    << std::endl;
+            }
+        },
+        data);
+
+    return true;
+    // if (!initialized_)
+    // {
+    //     throw std::runtime_error(
+    //         "MonocularEKFSLAMSystem must be initialized "
+    //         "before update.");
+    // }
+
+    // SensorManager::Data data;
+
+    // if (!sensor_manager_->popNext(data))
+    // {
+    //     running_ = false;
+    //     return;
+    // }
+
+    // std::unique_ptr<Measurement> measurement =frontend_->process(data);
+    // if (!measurement) return;
 
     // --------------------------------------------------
     // First valid measurement initializes estimator
     // --------------------------------------------------
 
-    if (!estimator_initialized_)
-    {
-        const auto* visualMeasurement =
-            dynamic_cast<const MonocularVisualMeasurement*>(
-                measurement.get());
+    // if (!estimator_initialized_)
+    // {
+    //     const auto* visualMeasurement =
+    //         dynamic_cast<const MonocularVisualMeasurement*>(
+    //             measurement.get());
 
-        if (!visualMeasurement)
-        {
-            throw std::runtime_error(
-                "MonocularEKFSLAMSystem expected "
-                "MonocularVisualMeasurement.");
-        }
+    //     if (!visualMeasurement)
+    //     {
+    //         throw std::runtime_error(
+    //             "MonocularEKFSLAMSystem expected "
+    //             "MonocularVisualMeasurement.");
+    //     }
 
-        StateEstimate initialState;
+    //     StateEstimate initialState;
 
-        initialState.timestamp =visualMeasurement->timestamp();
-        initialState.position =visualMeasurement->position();
-        initialState.velocity.setZero();
-        initialState.orientation =visualMeasurement->orientation();
-        initialState.accelerometerBias.setZero();
-        initialState.gyroscopeBias.setZero();
-        estimator_->initialize(initialState);
-        estimator_initialized_ = true;
-        return;
-    }
+    //     initialState.timestamp =visualMeasurement->timestamp();
+    //     initialState.position =visualMeasurement->position();
+    //     initialState.velocity.setZero();
+    //     initialState.orientation =visualMeasurement->orientation();
+    //     initialState.accelerometerBias.setZero();
+    //     initialState.gyroscopeBias.setZero();
+    //     estimator_->initialize(initialState);
+    //     estimator_initialized_ = true;
+    //     return;
+    // }
 
-    // --------------------------------------------------
-    // Subsequent measurements
-    //
-    // MonocularVisualMeasurement:
-    // PredictionAndCorrection
-    // --------------------------------------------------
+    // // --------------------------------------------------
+    // // Subsequent measurements
+    // //
+    // // MonocularVisualMeasurement:
+    // // PredictionAndCorrection
+    // // --------------------------------------------------
 
-    estimator_->process(*measurement);
+    // estimator_->process(*measurement);
 }
 
 
@@ -113,17 +161,27 @@ void MonocularEKFSLAMSystem::run()
 {
     if (!initialized_)
     {
-        throw std::runtime_error(
-            "MonocularEKFSLAMSystem must be initialized "
+        throw std::runtime_error("MonocularEKFSLAMSystem must be initialized "
             "before run.");
     }
 
     running_ = true;
 
-    while (running_)
+    // NORMAL PLAYBACK
+    while (sensor_manager_->isRunning())
     {
-        update();
+        if (!update())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
     }
+
+    // DRAIN REMAINING DATA
+    while (update())
+    {
+    }
+
+    running_ = false;
 }
 
 

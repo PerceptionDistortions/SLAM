@@ -16,10 +16,10 @@ public:
     SLAMSystem() = default;
     virtual ~SLAMSystem() = default;
     //INIT EACH SUB SYSTEM: FRONTEND, BACKEND, VISUALIZER, ETC.
-    virtual void init() = 0;
+    virtual bool init() = 0;
 
     //RUN ONE SLAM INTERATION
-    virtual void update() = 0;
+    virtual bool update() = 0;
 
     //SLAM WHILE LOOP CALLED IN MAIN: SLAM RUNS CONTINUOUS
     //USES UPDATE

@@ -18,8 +18,8 @@ public:
     //DESTRUCTOR
     ~MonocularEKFSLAMSystem() override = default;
 
-    void init() override;
-    void update() override;
+    bool init() override;
+    bool update() override;
     void run() override;
     void shutdown() override;
 

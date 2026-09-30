@@ -16,8 +16,8 @@ public:
 
     std::unique_ptr<Measurement> process(const MonocularFrame& frame) override;
 
-    void init() override;
-    void proces() override;
+    bool init() override;
+    bool process() override;
     void shutdown() override;
 
 private:

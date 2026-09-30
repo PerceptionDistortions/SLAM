@@ -16,7 +16,7 @@ public:
     virtual std::unique_ptr<Measurement> process(
         const LidarScan& scan) = 0;
 
-    void init() override;
-    void proces() override;
+    bool init() override;
+    bool process() override;
     void shutdown() override;
 };

@@ -56,9 +56,8 @@ bool EurocDatasetDriver::createSource()
 
 bool EurocDatasetDriver::init()
 {
-    if (state_ != DriverState::Created)
-        return false;
-
+    if (state_ != DriverState::Created) return false;
+    
     if (!std::filesystem::exists(dataset_path_))
     {
         state_ = DriverState::Error;
