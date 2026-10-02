@@ -4,6 +4,19 @@ system:
   mode: monocular
   visualizer: pangolin
 
+  inputs:
+    monocular:
+      camera: cam0
+
+    monouclar_vi:
+      camera: cam0
+      imu: imu0
+
+    stereo_vi:
+      camera_left: cam0
+      camera_right: cam1
+      imu: imu
+
 
 #DATA SOURCES, ID, PHYSICAL SENSORS, DATASETS
 data_sources:

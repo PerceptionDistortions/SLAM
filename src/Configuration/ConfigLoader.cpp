@@ -31,6 +31,58 @@ SystemConfig ConfigLoader::load(const std::string& filePath)
 
         if (node["visualizer"])
             config.system.visualizer = parseVisualizerType(node["visualizer"].as<std::string>());
+
+        // ========================================================
+        // INPUTS
+        // ========================================================
+
+        if (auto inputs = node["inputs"])
+        {
+            // ----------------------------------------------------
+            // MONOCULAR
+            // ----------------------------------------------------
+
+            if (auto monocular = inputs["monocular"])
+            {
+                if (monocular["camera"])
+                    config.system.monocular.camera =
+                        monocular["camera"].as<std::string>();
+            }
+
+            // ----------------------------------------------------
+            // MONOCULAR VI
+            // ----------------------------------------------------
+
+            if (auto monocularVI = inputs["monocular_vi"])
+            {
+                if (monocularVI["camera"])
+                    config.system.monocularVI.camera =
+                        monocularVI["camera"].as<std::string>();
+
+                if (monocularVI["imu"])
+                    config.system.monocularVI.imu =
+                        monocularVI["imu"].as<std::string>();
+            }
+
+            // ----------------------------------------------------
+            // STEREO VI
+            // ----------------------------------------------------
+
+            if (auto stereoVI = inputs["stereo_vi"])
+            {
+                if (stereoVI["camera_left"])
+                    config.system.stereoVI.cameraLeft =
+                        stereoVI["camera_left"].as<std::string>();
+
+                if (stereoVI["camera_right"])
+                    config.system.stereoVI.cameraRight =
+                        stereoVI["camera_right"].as<std::string>();
+
+                if (stereoVI["imu"])
+                    config.system.stereoVI.imu =
+                        stereoVI["imu"].as<std::string>();
+            }
+        }
     }
 
     // ============================================================

@@ -220,10 +220,7 @@ bool BufferManager::popNext(Data& data)
     SensorBuffer& selected_buffer =
         buffers_.at(selected_sensor);
 
-    data =
-        std::move(
-            selected_buffer.data.front());
-
+    data =std::move(selected_buffer.data.front());
     selected_buffer.data.pop_front();
 
     // A producer waiting because its buffer was full

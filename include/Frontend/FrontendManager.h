@@ -6,6 +6,7 @@
 #include"Frontend/ImuFrontend/ImuFrontend.h"
 #include"Frontend/LidarFrontend/LidarFrontend.h"
 #include"Sensors/Buffers/BufferManager.h"
+#include"Frontend/VisualFrontend/Pipeline/VisualData.h"
 
 class FrontendManager
 {
@@ -31,8 +32,9 @@ private:
     std::unique_ptr<ImuFrontend> imuFrontend_;
     std::unique_ptr<LidarFrontend> lidarFrontend_;
 
-    std::unique_ptr<Measurement> processVisual(const MonocularFrame& frame);
+    std::unique_ptr<Measurement> processVisual(const VisualData& data);
     std::unique_ptr<Measurement> processIMU(const ImuData& data);
+    //process LIDAR later
 
     bool initialized_{false};
 

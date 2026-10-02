@@ -19,52 +19,97 @@ FrontendManager::FrontendManager(
 
 FrontendManager::~FrontendManager() = default;
 
-std::unique_ptr<Measurement>
-FrontendManager::processIMU(const ImuData& data)
-{
-    if (!imuFrontend_)
-    {
-        throw std::runtime_error("IMU frontend is not available.");
-    }
-
-    return imuFrontend_->process(data);
-}
-
-std::unique_ptr<Measurement>
-FrontendManager::processVisual(const MonocularFrame& frame)
-{
-    if (!visualFrontend_)
-    {
-        throw std::runtime_error("Visual frontend is not available.");
-    }
-    return visualFrontend_->process(frame);
-}
-
 bool FrontendManager::init()
 {
     if (initialized_)
         return true;
 
     if (visualFrontend_)
-        visualFrontend_->init();
+    {
+        if (!visualFrontend_->init())
+            return false;
+    }
 
     if (imuFrontend_)
-        imuFrontend_->init();
+    {
+        if (!imuFrontend_->init())
+            return false;
+    }
 
     if (lidarFrontend_)
-        lidarFrontend_->init();
+    {
+        if (!lidarFrontend_->init())
+            return false;
+    }
 
     initialized_ = true;
     return true;
 }
 
-std::unique_ptr<Measurement> FrontendManager::process(const SensorData& data)
+std::unique_ptr<Measurement>
+FrontendManager::process(const SensorData& data)
 {
-    // if (!initialized_)
-    //     throw std::runtime_error("FrontendManager must be initialized before processing.");
+    if (!initialized_)
+    {
+        throw std::runtime_error(
+            "FrontendManager must be initialized before processing.");
+    }
 
-    // return std::visit([this](const auto& sensorData) {
-    //     return processSensor(sensorData);
-    // }, data);
-    return nullptr;
+    return std::visit(
+        [this](const auto& sensorData)
+        -> std::unique_ptr<Measurement>
+        {
+            using T = std::decay_t<decltype(sensorData)>;
+
+            if constexpr (std::is_same_v<T, ImuData>)
+            {
+                return processIMU(sensorData);
+            }
+            else if constexpr (
+                std::is_same_v<T, MonocularFrame> ||
+                std::is_same_v<T, StereoFrame>)
+            {
+                VisualData visualData = sensorData;
+                return processVisual(visualData);
+            }
+            else
+            {
+                return nullptr;
+            }
+        },
+        data);
+}
+
+
+// ---------------------------------------------------------
+// VISUAL PROCESSING
+// ---------------------------------------------------------
+
+std::unique_ptr<Measurement>
+FrontendManager::processVisual(const VisualData& data)
+{
+    if (!visualFrontend_)
+    {
+        throw std::runtime_error(
+            "Visual frontend is not available.");
+    }
+
+    return visualFrontend_->processVisual(data);
+}
+
+
+// ---------------------------------------------------------
+// IMU PROCESSING
+// ---------------------------------------------------------
+
+std::unique_ptr<Measurement>
+FrontendManager::processIMU(const ImuData& data)
+{
+    if (!imuFrontend_)
+    {
+        throw std::runtime_error(
+            "IMU frontend is not available.");
+    }
+
+    return imuFrontend_->processImu(data);
 }

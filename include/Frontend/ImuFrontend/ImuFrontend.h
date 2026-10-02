@@ -11,10 +11,8 @@ class ImuFrontend:public Frontend
 public:
     virtual ~ImuFrontend() = default;
 
-    virtual std::unique_ptr<Measurement> process(
+    virtual std::unique_ptr<Measurement> processImu(
         const ImuData& data) = 0;
 
-    bool init() override;
-    bool process() override;
-    void shutdown() override;
+    //INIT AND SHUTDOWN ALREADY DEFINED
 };

@@ -32,6 +32,28 @@ struct SystemConfig
             VisualizerType::None
         };
 
+        struct MonocularInput
+        {
+            std::string camera;
+        };
+
+        struct MonocularVIInput
+        {
+            std::string camera;
+            std::string imu;
+        };
+
+        struct StereoVIInput
+        {
+            std::string cameraLeft;
+            std::string cameraRight;
+            std::string imu;
+        };
+
+        MonocularInput monocular;
+        MonocularVIInput monocularVI;
+        StereoVIInput stereoVI;
+
     } system;
 
 

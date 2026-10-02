@@ -7,22 +7,20 @@
 class MonocularVisualFrontend : public VisualFrontend
 {
 public:
-    //CONSTRUCTOR NEEDS THE SYSTEM CONFIG FRONTEND FOR ALGORITHMS
-    //PROVIDED BY FACTORY
+    // Constructor receives frontend configuration.
+    // Created by the factory.
     explicit MonocularVisualFrontend(const FrontendConfig& config);
 
-    //DESTRUCTOR
     ~MonocularVisualFrontend() override = default;
 
-    std::unique_ptr<Measurement> process(const MonocularFrame& frame) override;
+    std::unique_ptr<Measurement> processVisual(
+        const VisualData& data) override;
 
     bool init() override;
-    bool process() override;
     void shutdown() override;
 
 private:
-    //OWN FRONTEND CONFIGURATION
-    //CONST BECAUSE SYSTEM CONFIG ALREADY OWNS IT
+    // Frontend configuration owned by SystemConfig.
     const FrontendConfig& config_;
 
     void preprocessImage(const MonocularFrame& frame);

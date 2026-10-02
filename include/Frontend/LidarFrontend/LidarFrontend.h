@@ -13,10 +13,8 @@ class LidarFrontend:public Frontend
 public:
     virtual ~LidarFrontend() = default;
 
-    virtual std::unique_ptr<Measurement> process(
+    virtual std::unique_ptr<Measurement> processLidar(
         const LidarScan& scan) = 0;
 
-    bool init() override;
-    bool process() override;
-    void shutdown() override;
+    //INIT AND SHUTDOWN ALREADY DEFINED
 };

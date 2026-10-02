@@ -31,7 +31,6 @@ public:
     >;
 
     using Buffer = std::deque<Data>;
-
     using Clock = std::chrono::steady_clock;
 
     // timeout_ms = 0 disables timeout handling.
@@ -53,6 +52,7 @@ public:
 
     // Remove the earliest measurement that is safe
     // according to the watermark.
+    //Store next data in data
     bool popNext(Data& data);
 
     // Mark a sensor as finished.
