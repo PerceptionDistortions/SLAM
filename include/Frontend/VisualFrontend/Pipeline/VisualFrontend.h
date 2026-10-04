@@ -3,6 +3,10 @@
 #include "Estimation/Measurement/Measurement.h"
 #include"Frontend/Frontend.h"
 #include "Frontend/VisualFrontend/Pipeline/VisualData.h"
+#include "Frontend/VisualFrontend/FeatureDetectionDescription/IFeatureDetectorDescriptor.h"
+#include "Frontend/VisualFrontend/FeatureMatchingTracking/IFeatureMatcher.h"
+#include"Frontend/VisualFrontend/MotionBlurCheck/IMotionBlurChecker.h"
+#include"Frontend/VisualFrontend/LightExposureCheck/IExposureCorrector.h"
 
 #include <memory>
 
@@ -16,7 +20,14 @@ public:
 
 //FIELDS
 protected:
-    // - feature detection
+    //CONSTRUCTOR: CALLED BY DERIVED CLASSES
+    //DETERMINES ALL STRATGIES AS PER CONFIG
+    explicit VisualFrontend(const FrontendConfig& config);
+
+    std::unique_ptr<IFeatureDetectorDescriptor> featureDetector_;
+    std::unique_ptr<IFeatureMatcher> featureMatcher_;
+    std::unique_ptr<IMotionBlurChecker> motionBlurChecker_;
+    std::unique_ptr<IExposureCorrector> exposureCorrector_;
     // - feature matching
     // - feature tracking
     // - outlier rejection

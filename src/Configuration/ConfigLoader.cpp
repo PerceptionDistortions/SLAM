@@ -217,6 +217,51 @@ SystemConfig ConfigLoader::load(const std::string& filePath)
 
                 if (preprocessing["undistort"])
                     config.frontend.visual.preprocessing.undistort = preprocessing["undistort"].as<bool>();
+                
+                //MOTION BLUR CHECK
+                if (auto motionBlur = preprocessing["motion_blur"])
+                {
+                    if (motionBlur["enabled"])
+                        config.frontend.visual.preprocessing.motionBlur.enabled =
+                            motionBlur["enabled"].as<bool>();
+
+                    if (motionBlur["method"])
+                        config.frontend.visual.preprocessing.motionBlur.method =
+                            motionBlur["method"].as<std::string>();
+
+                    if (auto laplacian = motionBlur["laplacian_variance"])
+                    {
+                        if (laplacian["threshold"])
+                            config.frontend.visual.preprocessing.motionBlur
+                                .laplacianVariance.threshold =
+                                laplacian["threshold"].as<double>();
+                    }
+                }
+
+                //LIGHT EXPOSURE
+                if (auto illumination = preprocessing["illumination"])
+                {
+                    if (illumination["enabled"])
+                        config.frontend.visual.preprocessing.illumination.enabled =
+                            illumination["enabled"].as<bool>();
+
+                    if (illumination["method"])
+                        config.frontend.visual.preprocessing.illumination.method =
+                            illumination["method"].as<std::string>();
+
+                    if (auto clahe = illumination["clahe"])
+                    {
+                        if (clahe["clip_limit"])
+                            config.frontend.visual.preprocessing.illumination
+                                .clahe.clipLimit =
+                                clahe["clip_limit"].as<double>();
+
+                        if (clahe["tile_grid_size"])
+                            config.frontend.visual.preprocessing.illumination
+                                .clahe.tileGridSize =
+                                clahe["tile_grid_size"].as<int>();
+                    }
+                }
             }
 
             if (auto matching = visual["feature_matching"])

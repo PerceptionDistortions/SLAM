@@ -25,6 +25,35 @@ struct FrontendConfig
             bool grayscale{true};
             bool undistort{true};
 
+
+            struct MotionBlur
+            {
+                bool enabled{true};
+                std::string method;
+
+                struct LaplacianVariance
+                {
+                    double threshold{100.0};
+
+                } laplacianVariance;
+
+            } motionBlur;
+
+
+            struct Illumination
+            {
+                bool enabled{true};
+                std::string method;
+
+                struct CLAHE
+                {
+                    double clipLimit{2.0};
+                    int tileGridSize{8};
+
+                } clahe;
+
+            } illumination;
+
         } preprocessing;
 
 

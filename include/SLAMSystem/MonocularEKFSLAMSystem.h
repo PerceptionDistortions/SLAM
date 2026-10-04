@@ -11,9 +11,7 @@ class MonocularEKFSLAMSystem : public SLAMSystem
 public:
     //CONSTRUCTOR
     //FEEDS DATA INTO THE PARENT CLASS
-    MonocularEKFSLAMSystem(
-        const SystemConfig& config,
-        SLAMSystemDependencies dependencies);
+    MonocularEKFSLAMSystem(SLAMSystemDependencies dependencies);
     
     //DESTRUCTOR
     ~MonocularEKFSLAMSystem() override = default;

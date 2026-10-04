@@ -147,12 +147,8 @@ frontend:
   visual:
 
     enabled: true
-
-
     detector_descriptor:
-
-      type: orb
-
+      type: orb #ORB, SUPERPOINT
       n_features: 2000
       scale_factor: 1.2
       n_levels: 8
@@ -162,6 +158,24 @@ frontend:
 
       grayscale: true
       undistort: true
+
+      motion_blur:
+
+        enabled: true
+        method: laplacian #laplacian, Tenengrad, Brenner, Sobel
+
+        laplacian_variance:
+          threshold: 100.0
+
+
+      illumination:
+
+        enabled: true
+        method: clahe #clahe, photometric
+
+        clahe:
+          clip_limit: 2.0
+          tile_grid_size: 8
 
 
     feature_matching:
@@ -210,7 +224,6 @@ frontend:
     keyframe_selection:
 
       enabled: true
-
 
   # ==========================================================
   # IMU FRONTEND

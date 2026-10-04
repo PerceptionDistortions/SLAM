@@ -14,8 +14,7 @@
 
 //CONSTRUCTOR
 //SLAM FACTORY HAS ALREADY CREATED EVERYTHING
-MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(const SystemConfig& config,
-    SLAMSystemDependencies dependencies)
+MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(SLAMSystemDependencies dependencies)
 {
     sensor_manager_ =std::move(dependencies.sensorManager);
     frontend_ =std::move(dependencies.frontend);
