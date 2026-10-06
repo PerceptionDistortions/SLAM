@@ -186,6 +186,12 @@ frontend:
       ratio_test: 0.75
       cross_check: false
 
+    cross_check:
+      type: mutual_best
+
+    distance_filtering:
+      type: fixed_distance
+      max_distance: 60.0
 
     geometric_verification:
 

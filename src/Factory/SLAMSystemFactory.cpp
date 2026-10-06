@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 #include <utility>
-
+#include <iostream>
 // SLAM SYSTEMS
 #include "SLAMSystem/MonocularEKFSLAMSystem.h"
 #include "SLAMSystem/MonocularVISLAMSystem.h"
@@ -45,6 +45,16 @@
 #include <utility>
 
 #include "Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.h"
+#include"Frontend/VisualFrontend/FeatureDetectionDescription/ORBDetectorDescriptor.h"
+#include"Frontend/VisualFrontend/FeatureMatchingTracking/BruteForceMatcher.h"
+#include"Frontend/VisualFrontend/CrossCheck/MutualBestCrossCheck.h"
+#include"Frontend/VisualFrontend/DistanceDescriptorFilter/FixedDistanceFilter.h"
+#include "Frontend/VisualFrontend/MotionBlurCheck/IMotionBlurChecker.h"
+#include "Frontend/VisualFrontend/MotionBlurCheck/LaplacianBlurChecker.h"
+
+#include "Frontend/VisualFrontend/LightExposureCheck/IExposureCorrector.h"
+#include "Frontend/VisualFrontend/LightExposureCheck/CLAHEExposureCorrector.h"
+
 
 #include "Estimation/Filter/ESEKF/ESEKF.h"
 #include "Estimation/Filter/Predictor/ConstantVelocityPredictor.h"
@@ -71,12 +81,18 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::create(const SystemConfig& config
 
 
 //COMMON DEPENDENCIES
-SLAMSystemDependencies SLAMSystemFactory::createDependencies(const SystemConfig& config)
+SLAMSystemDependencies SLAMSystemFactory::createDependencies(const SystemConfig& config,
+const std::string& configPath)
 {
     SLAMSystemDependencies dependencies;
 
     //SENSOR MANAGER, BUFFER, CALIBRATION
     dependencies.sensorManager =std::make_unique<SensorManager>();
+    if (!dependencies.sensorManager->loadConfig(configPath))
+    {
+        throw std::runtime_error(
+            "Failed to load SensorManager configuration.");
+    }
 
     //MAP MANAGER
     dependencies.mapManager =std::make_unique<MapManager>();
@@ -94,14 +110,170 @@ SLAMSystemDependencies SLAMSystemFactory::createDependencies(const SystemConfig&
 std::unique_ptr<SLAMSystem>
 SLAMSystemFactory::createMonocular(const SystemConfig& config)
 {
-    //CREATES SENSORS
-    //CREATES MAPS
-    SLAMSystemDependencies dependencies = createDependencies(config);
+    //COMMON DEPENDENCIES
+    SLAMSystemDependencies dependencies = createDependencies(config,"config/system.yaml");
 
-    //CREATE FRONTEND: NEED THREE TYPES OF FRONTEND
-    //FRONTEND CONFIG
-    //FRONTEND NEEDS THREE TYPES OF FRONTEND, WE NEED ONE ONLY
-    auto visualFrontend =std::make_unique<MonocularVisualFrontend>(config.frontend);
+    //VISUAL FRONTEND CONFIG
+    const auto& visualConfig =config.frontend.visual; //VISUAL CONFIG
+    
+    //
+    std::unique_ptr<IFeatureDetectorDescriptor> featureDetectorDescriptor;
+
+    if (visualConfig.detectorDescriptor.type == "orb")
+    {
+        featureDetectorDescriptor =
+            std::make_unique<ORBDetectorDescriptor>(
+                visualConfig.detectorDescriptor.nFeatures,
+                visualConfig.detectorDescriptor.scaleFactor,
+                visualConfig.detectorDescriptor.nLevels);
+    }
+    else
+    {
+        throw std::runtime_error(
+            "Unsupported feature detector/descriptor: " +
+            visualConfig.detectorDescriptor.type);
+    }
+
+    //FEATURE MATCHER
+    //BASED ON CONFIG
+    //NORMS: HAMMING, ETC.
+    std::unique_ptr<IFeatureMatcher> featureMatcher;
+
+    if (visualConfig.featureMatching.type == "bf")
+    {
+        int normType;
+        if (visualConfig.featureMatching.descriptor == "hamming")
+        {
+            normType = cv::NORM_HAMMING;
+        }
+        else
+        {
+            throw std::runtime_error(
+                "Unsupported descriptor distance: " +
+                visualConfig.featureMatching.descriptor);
+        }
+        featureMatcher =std::make_unique<BruteForceMatcher>(normType);
+    }
+    else
+    {
+        throw std::runtime_error(
+            "Unsupported feature matcher: " +
+            visualConfig.featureMatching.type);
+    }
+
+    //MOTION BLUR CHECKER
+    // MOTION BLUR CHECKER
+    std::unique_ptr<IMotionBlurChecker> motionBlurChecker;
+
+    const auto& motionBlurConfig =
+        visualConfig.preprocessing.motionBlur;
+
+    if (motionBlurConfig.enabled)
+    {
+        if (motionBlurConfig.method == "laplacian")
+        {
+            motionBlurChecker =
+                std::make_unique<LaplacianBlurChecker>(
+                    motionBlurConfig.laplacianVariance.threshold
+                );
+        }
+        else
+        {
+            throw std::runtime_error(
+                "Unsupported motion blur method: " +
+                motionBlurConfig.method
+            );
+        }
+    }
+    //LIGHT EXPOSURE CHECKER
+    std::unique_ptr<IExposureCorrector> exposureCorrector;
+
+    const auto& illuminationConfig =
+        visualConfig.preprocessing.illumination;
+
+    if (illuminationConfig.enabled)
+    {
+        if (illuminationConfig.method == "clahe")
+        {
+            exposureCorrector =
+                std::make_unique<CLAHEExposureCorrector>(
+                    illuminationConfig.clahe.clipLimit,
+                    illuminationConfig.clahe.tileGridSize
+                );
+        }
+        else
+        {
+            throw std::runtime_error(
+                "Unsupported illumination method: " +
+                illuminationConfig.method
+            );
+        }
+    }
+
+    //CROSS CHECKER
+    std::unique_ptr<ICrossCheckStrategy> crossChecker;
+
+    const auto& crossCheckConfig =
+        visualConfig.crossCheck;
+
+    if (visualConfig.featureMatching.crossCheck)
+    {
+        if (crossCheckConfig.type == "mutual_best")
+        {
+            crossChecker =
+                std::make_unique<MutualBestCrossCheck>();
+        }
+        else
+        {
+            throw std::runtime_error(
+                "Unsupported cross-check strategy: " +
+                crossCheckConfig.type
+            );
+        }
+    }
+
+    //DISTANCE DESCRIPTOR CHECKER
+    std::unique_ptr<IDistanceFilter> distanceFilter;
+    const auto& distanceFilterConfig =visualConfig.distanceFiltering;
+
+    std::cout
+        << "Distance filtering type = ["
+        << distanceFilterConfig.type
+        << "]"
+        << std::endl;
+
+    std::cout
+        << "Distance filtering max distance = "
+        << distanceFilterConfig.maxDistance
+        << std::endl;
+
+    if (distanceFilterConfig.type == "fixed_distance")
+    {
+        distanceFilter =
+            std::make_unique<FixedDistanceFilter>(
+                distanceFilterConfig.maxDistance
+            );
+    }
+    else
+    {
+        throw std::runtime_error(
+            "Unsupported distance filtering strategy: " +
+            distanceFilterConfig.type
+        );
+    }
+    //VISUAL FRONTEND
+    auto visualFrontend =
+    std::make_unique<MonocularVisualFrontend>(
+        config.frontend,
+        std::move(featureDetectorDescriptor),
+        std::move(featureMatcher),
+        std::move(motionBlurChecker),
+        std::move(exposureCorrector),
+        std::move(crossChecker),
+        std::move(distanceFilter)
+    );
+
+    //FRONTEND IN DEPENDENCIES: ONLY VISUAL REQUIRED
     dependencies.frontend =std::make_unique<FrontendManager>(
             nullptr,
             std::move(visualFrontend),
@@ -141,7 +313,7 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     dependencies.visualizer=nullptr;
 
     //SLAM SYSTEM: FINAL
-    return std::make_unique<MonocularEKFSLAMSystem>(config,std::move(dependencies));
+    return std::make_unique<MonocularEKFSLAMSystem>(std::move(dependencies));
 }
 
 

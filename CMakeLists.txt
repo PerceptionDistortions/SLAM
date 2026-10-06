@@ -68,6 +68,14 @@ add_executable(slam_app
     src/Frontend/FrontendManager.cpp
     src/Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.cpp
 
+    #Visual Frontend
+    src/Frontend/VisualFrontend/FeatureDetectionDescription/ORBDetectorDescriptor.cpp
+    src/Frontend/VisualFrontend/FeatureMatchingTracking/BruteForceMatcher.cpp
+    src/Frontend/VisualFrontend/MotionBlurCheck/LaplacianBlurChecker.cpp
+    src/Frontend/VisualFrontend/LightExposure/CLAHEExposureCorrector.cpp
+    src/Frontend/VisualFrontend/CrossCheck/MutualBestCrossCheck.cpp
+    src/Frontend/VisualFrontend/DescriptorDistanceFilter/FixedDistanceFilter.cpp
+
     # SLAM System
     src/SLAMSystem/MonocularEKFSLAMSystem.cpp
 

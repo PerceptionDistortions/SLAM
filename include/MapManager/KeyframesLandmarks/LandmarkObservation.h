@@ -2,7 +2,7 @@
 
 #include <Eigen/Core>
 
-#include "MapTypes.h"
+#include "MapManager/MapTypes.h"
 
 //A LANDMARK OBSERVED IN A KEYFRAME
 //WHAT FEATURE ID IT CORRESONDS TO

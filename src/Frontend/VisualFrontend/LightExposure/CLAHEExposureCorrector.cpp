@@ -1,4 +1,4 @@
-#include "Frontend/VisualFrontend/LightExposureCheck/CLAHELExposureCorrector.h"
+#include "Frontend/VisualFrontend/LightExposureCheck/CLAHEExposureCorrector.h"
 
 #include <opencv2/imgproc.hpp>
 

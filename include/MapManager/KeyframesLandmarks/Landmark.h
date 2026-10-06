@@ -2,7 +2,7 @@
 
 #include <Eigen/Core>
 
-#include "MapTypes.h"
+#include "MapManager/MapTypes.h"
 
 class Landmark
 {

@@ -57,12 +57,10 @@ public:
 
     // Mark a sensor as finished.
     // Finished sensors no longer block the watermark.
-    bool markFinished(
-        const std::string& sensor_id);
+    bool markFinished(const std::string& sensor_id);
 
     // Reactivate a sensor.
-    bool activateSensor(
-        const std::string& sensor_id);
+    bool activateSensor(const std::string& sensor_id);
 
     // Wake all waiting producer/consumer threads.
     void notifyAll();

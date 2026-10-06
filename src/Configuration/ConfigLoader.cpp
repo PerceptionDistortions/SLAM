@@ -279,6 +279,22 @@ SystemConfig ConfigLoader::load(const std::string& filePath)
                     config.frontend.visual.featureMatching.crossCheck = matching["cross_check"].as<bool>();
             }
 
+            // DISTANCE FILTERING
+            if (auto distanceFiltering = visual["distance_filtering"])
+            {
+                if (distanceFiltering["type"])
+                {
+                    config.frontend.visual.distanceFiltering.type =
+                        distanceFiltering["type"].as<std::string>();
+                }
+
+                if (distanceFiltering["max_distance"])
+                {
+                    config.frontend.visual.distanceFiltering.maxDistance =
+                        distanceFiltering["max_distance"].as<double>();
+                }
+            }
+
             if (auto geometric = visual["geometric_verification"])
             {
                 if (geometric["enabled"])

@@ -1,0 +1,47 @@
+system:
+  #SLAM TYPES
+  #mono, mono_vi, stereo_vi
+  type: mono
+
+  #SENSORS USED
+  #cam0,cam1,cam2...
+  #imu0, imu1...
+  #false
+  mono_camera: cam0
+
+  monovi_camera: cam0
+  monovi_imu: imu0
+
+  stereovi_leftcamera: cam0
+  stereovi_rightcamera: cam1
+  stereovi_imu: imu0
+
+  #VISUALIZER
+  visualizer: pangolin
+
+visual_frontend:
+  #orb, superpoint
+  detector_descriptor: orb
+
+  #ORB params
+  orb_feature_count: 100
+  orb_scale_factor: 1
+  orb_levels: 1
+
+  #bf, optical_flow
+  descriptor_macther: bf
+
+  #hamming, manhattan
+  bf_norm: hamming
+
+  motion_blur: laplacian
+
+  light_exposure: clahe
+
+  lowe_ratio: 0.7
+
+  cross_check: mutual_best
+
+  distance_filtering: fixed_distance
+
+

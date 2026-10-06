@@ -13,7 +13,10 @@
 class ORBDetectorDescriptor : public IFeatureDetectorDescriptor
 {
 public:
-    ORBDetectorDescriptor();
+    ORBDetectorDescriptor(
+        int nFeatures,
+        double scaleFactor,
+        int nLevels);
 
     void detectAndCompute(
         const cv::Mat& image,

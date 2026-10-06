@@ -156,29 +156,70 @@ bool MonocularEKFSLAMSystem::update()
 }
 
 
+// void MonocularEKFSLAMSystem::run()
+// {
+//     if (!initialized_)
+//     {
+//         throw std::runtime_error("MonocularEKFSLAMSystem must be initialized "
+//             "before run.");
+//     }
+
+//     running_ = true;
+
+//     // NORMAL PLAYBACK
+//     while (sensor_manager_->isRunning())
+//     {
+//         if (!update())
+//         {
+//             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+//         }
+//     }
+
+//     // DRAIN REMAINING DATA
+//     while (update())
+//     {
+//     }
+
+//     running_ = false;
+// }
 void MonocularEKFSLAMSystem::run()
 {
     if (!initialized_)
     {
-        throw std::runtime_error("MonocularEKFSLAMSystem must be initialized "
+        throw std::runtime_error(
+            "MonocularEKFSLAMSystem must be initialized "
             "before run.");
     }
 
     running_ = true;
 
-    // NORMAL PLAYBACK
+    std::cout << "\n=== SLAM RUN ===" << std::endl;
+
+    std::size_t count = 0;
+
     while (sensor_manager_->isRunning())
     {
-        if (!update())
+        if (update())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            ++count;
+        }
+        else
+        {
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(1));
         }
     }
 
-    // DRAIN REMAINING DATA
+    // Drain data already buffered after players finish.
     while (update())
     {
+        ++count;
     }
+
+    std::cout
+        << "Total sensor samples consumed = "
+        << count
+        << std::endl;
 
     running_ = false;
 }

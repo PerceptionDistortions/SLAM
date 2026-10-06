@@ -1,4 +1,4 @@
-#include "LaplacianBlurChecker.h"
+#include "Frontend/VisualFrontend/MotionBlurCheck/LaplacianBlurChecker.h"
 
 #include <opencv2/imgproc.hpp>
 

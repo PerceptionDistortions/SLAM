@@ -68,6 +68,22 @@ struct FrontendConfig
         } featureMatching;
 
 
+        struct CrossCheck
+        {
+            std::string type;
+
+        } crossCheck;
+
+
+        struct DistanceFiltering
+        {
+            std::string type;
+
+            double maxDistance{60.0};
+
+        } distanceFiltering;
+
+
         struct GeometricVerification
         {
             bool enabled{true};

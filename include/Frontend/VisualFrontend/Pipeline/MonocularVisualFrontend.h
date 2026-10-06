@@ -9,7 +9,15 @@ class MonocularVisualFrontend : public VisualFrontend
 public:
     // Constructor receives frontend configuration.
     // Created by the factory.
-    explicit MonocularVisualFrontend(const FrontendConfig& config);
+    MonocularVisualFrontend(
+    const FrontendConfig& config,
+    std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
+    std::unique_ptr<IFeatureMatcher> featureMatcher,
+    std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
+    std::unique_ptr<IExposureCorrector> exposureCorrector,
+    std::unique_ptr<ICrossCheckStrategy> crossChecker,
+    std::unique_ptr<IDistanceFilter> distanceFilter
+    );
 
     ~MonocularVisualFrontend() override = default;
 

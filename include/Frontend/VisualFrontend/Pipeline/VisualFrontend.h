@@ -1,14 +1,19 @@
 #pragma once
 
 #include "Estimation/Measurement/Measurement.h"
-#include"Frontend/Frontend.h"
+#include "Frontend/Frontend.h"
 #include "Frontend/VisualFrontend/Pipeline/VisualData.h"
+
 #include "Frontend/VisualFrontend/FeatureDetectionDescription/IFeatureDetectorDescriptor.h"
 #include "Frontend/VisualFrontend/FeatureMatchingTracking/IFeatureMatcher.h"
-#include"Frontend/VisualFrontend/MotionBlurCheck/IMotionBlurChecker.h"
-#include"Frontend/VisualFrontend/LightExposureCheck/IExposureCorrector.h"
+#include "Frontend/VisualFrontend/MotionBlurCheck/IMotionBlurChecker.h"
+#include "Frontend/VisualFrontend/LightExposureCheck/IExposureCorrector.h"
+#include "Frontend/VisualFrontend/CrossCheck/ICrossCheckStrategy.h"
+#include "Frontend/VisualFrontend/DistanceDescriptorFilter/IDistanceFilter.h"
 
 #include <memory>
+#include <utility>
+
 
 class VisualFrontend : public Frontend
 {
@@ -22,14 +27,30 @@ public:
 protected:
     //CONSTRUCTOR: CALLED BY DERIVED CLASSES
     //DETERMINES ALL STRATGIES AS PER CONFIG
-    explicit VisualFrontend(const FrontendConfig& config);
+    explicit VisualFrontend(
+        std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
+        std::unique_ptr<IFeatureMatcher> featureMatcher,
+        std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
+        std::unique_ptr<IExposureCorrector> exposureCorrector,
+        std::unique_ptr<ICrossCheckStrategy> crossChecker,
+        std::unique_ptr<IDistanceFilter> distanceFilter)
+        : featureDetector_(std::move(featureDetector)),
+          featureMatcher_(std::move(featureMatcher)),
+          motionBlurChecker_(std::move(motionBlurChecker)),
+          exposureCorrector_(std::move(exposureCorrector)),
+          crossChecker_(std::move(crossChecker)),
+          distanceFilter_(std::move(distanceFilter))
+    {
+    }
 
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetector_;
     std::unique_ptr<IFeatureMatcher> featureMatcher_;
     std::unique_ptr<IMotionBlurChecker> motionBlurChecker_;
     std::unique_ptr<IExposureCorrector> exposureCorrector_;
-    // - feature matching
-    // - feature tracking
+    std::unique_ptr<ICrossCheckStrategy> crossChecker_;
+    std::unique_ptr<IDistanceFilter> distanceFilter_;
+  
+    // - feature tracking: Optical Flow
     // - outlier rejection
     // - camera model handling
     
@@ -46,14 +67,18 @@ protected:
 	cv::Mat& descriptors);
 
     //DESCRIPTOR MATCHING
+    //BF INCLUDES THE KNN
     bool matchDescriptors(const cv::Mat& descriptors1,const cv::Mat& descriptors2);
-
-    //KNN MATCHING
-    bool knnMatchDescriptors(const cv::Mat& descriptors1,const cv::Mat& descriptors2);
 
     //LOWE RATIO TEST
     //NO STRTAGEY
     bool LoweRatioTest(const cv::Mat& descriptors1,const cv::Mat& descriptors2);
+
+    //DISTANCE BASED FILTERING
+    void filterByDescriptorDistance(
+    const std::vector<cv::DMatch>& matches,
+    std::vector<cv::DMatch>& filteredMatches,
+    float maxDistance) const;
 
     //CROSS CHECK DESCRIPTORS
     bool crossCheckDescriptors(const cv::Mat& descriptors1,const cv::Mat& descriptors2);

@@ -12,7 +12,8 @@ public:
     static std::unique_ptr<SLAMSystem> create(const SystemConfig& config);
     
 private:
-    static SLAMSystemDependencies createDependencies(const SystemConfig& config);
+    static SLAMSystemDependencies createDependencies(const SystemConfig& config,
+    const std::string& configPath);
 
     static std::unique_ptr<SLAMSystem> createMonocular(const SystemConfig& config);
 

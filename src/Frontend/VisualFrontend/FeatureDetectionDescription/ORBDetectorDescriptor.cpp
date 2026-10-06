@@ -1,8 +1,14 @@
-#include "VisualFrontend/FeatureDetectionDescription/ORBDetectorDescriptor.h"
+#include "Frontend/VisualFrontend/FeatureDetectionDescription/ORBDetectorDescriptor.h"
 
-ORBDetectorDescriptor::ORBDetectorDescriptor()
+ORBDetectorDescriptor::ORBDetectorDescriptor(
+    int nFeatures,
+    double scaleFactor,
+    int nLevels)
 {
-    orb_ = cv::ORB::create();
+    orb_ = cv::ORB::create(
+        nFeatures,
+        scaleFactor,
+        nLevels);
 }
 
 void ORBDetectorDescriptor::detectAndCompute(

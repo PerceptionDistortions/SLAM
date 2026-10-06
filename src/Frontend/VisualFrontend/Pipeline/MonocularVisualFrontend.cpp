@@ -2,17 +2,31 @@
 
 #include <utility>
 
-MonocularVisualFrontend::MonocularVisualFrontend(const FrontendConfig& config)
-    : config_(config)
-{}
+MonocularVisualFrontend::MonocularVisualFrontend(
+    const FrontendConfig& config,
+    std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
+    std::unique_ptr<IFeatureMatcher> featureMatcher,
+    std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
+    std::unique_ptr<IExposureCorrector> exposureCorrector,
+    std::unique_ptr<ICrossCheckStrategy> crossChecker,
+    std::unique_ptr<IDistanceFilter> distanceFilter)
+    : VisualFrontend(
+          std::move(featureDetector),
+          std::move(featureMatcher),
+          std::move(motionBlurChecker),
+          std::move(exposureCorrector),
+          std::move(crossChecker),
+          std::move(distanceFilter)),
+      config_(config)
+{
+}
 
 //OVERRIDEN METHODS
 bool MonocularVisualFrontend::init(){
     return true;
 }
 
-std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(
-    const VisualData& data){
+std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const VisualData& data){
     return nullptr;
 }
 

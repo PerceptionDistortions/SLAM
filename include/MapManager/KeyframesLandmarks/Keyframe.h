@@ -2,14 +2,14 @@
 
 #include <vector>
 
-#include "MapTypes.h"
-#include "Pose.h"
-#include "LandmarkObservation.h"
+#include "MapManager/MapTypes.h"
+#include "MapManager/Pose.h"
+#include "MapManager/KeyframesLandmarks/LandmarkObservation.h"
 
-class KeyFrame
+class Keyframe
 {
 public:
-    KeyFrame(
+    Keyframe(
         KeyframeId id,
         Timestamp timestamp,
         const Pose& pose);
