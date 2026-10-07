@@ -10,6 +10,7 @@
 #include "Frontend/VisualFrontend/LightExposureCheck/IExposureCorrector.h"
 #include "Frontend/VisualFrontend/CrossCheck/ICrossCheckStrategy.h"
 #include "Frontend/VisualFrontend/DistanceDescriptorFilter/IDistanceFilter.h"
+#include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 
 #include <memory>
 #include <utility>
@@ -59,6 +60,13 @@ protected:
     //FRAME PREPROCESSING: GRAYSCALE, PYRAMID, UNDISTORT, MOTION BLUR, EXPOSURE
     bool isMotionBlurred(const cv::Mat& image) const; //LAPLACIAN VARIANCE
     bool isPoorlyExposed(const cv::Mat& image) const; //LIGHT EXPOSURE
+    bool convertToGrayscale(const cv::Mat& input,cv::Mat& gray) const;
+
+    bool undistortImage(
+    const cv::Mat& input,
+    cv::Mat& undistorted,
+    const CameraCalibration& calibration) const;
+
     bool preprocessImage(cv::Mat& image);
 
     //DETECT AND COMPUTE FETAURES

@@ -33,13 +33,12 @@ SensorDriver& SensorContext::getDriver()
     return *driver_;
 }
 
-void SensorContext::setCalibration(
-    std::unique_ptr<ICalibration> calibration)
+void SensorContext::setCalibration(std::unique_ptr<ICalibration> calibration)
 {
     calibration_ = std::move(calibration);
 }
 
-ICalibration* SensorContext::getCalibration()
+const ICalibration* SensorContext::getCalibration() const
 {
     return calibration_.get();
 }

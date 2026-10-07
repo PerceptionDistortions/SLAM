@@ -11,7 +11,8 @@ class MonocularEKFSLAMSystem : public SLAMSystem
 public:
     //CONSTRUCTOR
     //FEEDS DATA INTO THE PARENT CLASS
-    MonocularEKFSLAMSystem(SLAMSystemDependencies dependencies);
+    MonocularEKFSLAMSystem(SLAMSystemDependencies dependencies,
+    const std::string& cameraName);
     
     //DESTRUCTOR
     ~MonocularEKFSLAMSystem() override = default;
@@ -24,6 +25,12 @@ public:
     StateEstimate getState() const;
 
 private:
+    std::string camera_name_;
+
+    //BEFORE FEEDING TO FRONTEND
+    FrontendData convertCameraDataToFrontendData(
+        const CameraData& cameraData) const;
+        
     bool initialized_{false};
     bool estimator_initialized_{false};
     bool running_{false};

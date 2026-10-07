@@ -1,9 +1,12 @@
 #include"Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.h"
+#include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 
 #include <utility>
+#include<iostream>
 
 MonocularVisualFrontend::MonocularVisualFrontend(
     const FrontendConfig& config,
+    const CameraCalibration& cameraCalibration,
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
     std::unique_ptr<IFeatureMatcher> featureMatcher,
     std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
@@ -17,7 +20,7 @@ MonocularVisualFrontend::MonocularVisualFrontend(
           std::move(exposureCorrector),
           std::move(crossChecker),
           std::move(distanceFilter)),
-      config_(config)
+      config_(config),cameraCalibration_(cameraCalibration)
 {
 }
 
@@ -27,6 +30,8 @@ bool MonocularVisualFrontend::init(){
 }
 
 std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const VisualData& data){
+    std::cout<<"Monocular visual frontend frame processing."<<std::endl;
+    
     return nullptr;
 }
 
@@ -35,8 +40,7 @@ void MonocularVisualFrontend::shutdown(){
 }
 
 
-void MonocularVisualFrontend::preprocessImage(
-    const MonocularFrame& frame)
+void MonocularVisualFrontend::preprocessImage(const MonocularFrame& frame)
 {
     // Image preprocessing
 }

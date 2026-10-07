@@ -47,7 +47,7 @@ bool FrontendManager::init()
 }
 
 std::unique_ptr<Measurement>
-FrontendManager::process(const SensorData& data)
+FrontendManager::process(const FrontendData& data)
 {
     if (!initialized_)
     {

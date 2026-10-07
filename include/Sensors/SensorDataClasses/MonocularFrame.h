@@ -6,4 +6,5 @@ class MonocularFrame
 {
 public:
     CameraData camera;
+    int64_t timestamp;
 };

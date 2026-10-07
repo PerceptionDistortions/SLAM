@@ -3,6 +3,8 @@
 #include "Frontend/VisualFrontend/Pipeline/VisualFrontend.h"
 #include"Configuration/Configs/SystemConfig.h"
 #include"Configuration/Configs/FrontendConfig.h"
+#include "Sensors/Calibration/DataStructures/CameraCalibration.h"
+
 
 class MonocularVisualFrontend : public VisualFrontend
 {
@@ -11,6 +13,7 @@ public:
     // Created by the factory.
     MonocularVisualFrontend(
     const FrontendConfig& config,
+    const CameraCalibration& cameraCalibration,
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
     std::unique_ptr<IFeatureMatcher> featureMatcher,
     std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
@@ -21,8 +24,7 @@ public:
 
     ~MonocularVisualFrontend() override = default;
 
-    std::unique_ptr<Measurement> processVisual(
-        const VisualData& data) override;
+    std::unique_ptr<Measurement> processVisual(const VisualData& data) override;
 
     bool init() override;
     void shutdown() override;
@@ -30,6 +32,8 @@ public:
 private:
     // Frontend configuration owned by SystemConfig.
     const FrontendConfig& config_;
+
+    CameraCalibration cameraCalibration_;
 
     void preprocessImage(const MonocularFrame& frame);
 

@@ -15,6 +15,7 @@
 #include "OutputConfig.h"
 #include "EvaluationConfig.h"
 #include "LoggingConfig.h"
+#include "Configuration/Configs/VisualFrontendConfig.h"
 
 struct SystemConfig
 {
@@ -24,9 +25,7 @@ struct SystemConfig
 
     struct System
     {
-        SLAMType mode{
-            SLAMType::Monocular
-        };
+        SLAMType mode{SLAMType::Monocular};
 
         VisualizerType visualizer{
             VisualizerType::None
@@ -125,4 +124,7 @@ struct SystemConfig
     // ========================================================
 
     LoggingConfig logging;
+
+    //VISUAL FRONTEND CONFIG
+    VisualFrontendConfig visualFrontend;
 };

@@ -24,12 +24,15 @@ visual_frontend:
   detector_descriptor: orb
 
   #ORB params
-  orb_feature_count: 100
-  orb_scale_factor: 1
-  orb_levels: 1
+  orb_feature_count: 2000
+  orb_scale_factor: 1.2
+  orb_levels: 8
 
-  #bf, optical_flow
-  descriptor_macther: bf
+  #bf, none
+  feature_matcher: bf
+
+  #optical flow, none
+  feature_tracker: none
 
   #hamming, manhattan
   bf_norm: hamming

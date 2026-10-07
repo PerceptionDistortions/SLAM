@@ -25,10 +25,9 @@ public:
     SensorDriver& getDriver();
 
     // CALIBRATION
-    void setCalibration(
-        std::unique_ptr<ICalibration> calibration);
+    void setCalibration(std::unique_ptr<ICalibration> calibration);
 
-    ICalibration* getCalibration();
+    const ICalibration* getCalibration() const;
 
 private:
 

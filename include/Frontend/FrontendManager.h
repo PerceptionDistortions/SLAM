@@ -1,12 +1,20 @@
 #pragma once
 
 #include<memory>
+#include <variant>
 
 #include"Frontend/VisualFrontend/Pipeline/VisualFrontend.h"
 #include"Frontend/ImuFrontend/ImuFrontend.h"
 #include"Frontend/LidarFrontend/LidarFrontend.h"
 #include"Sensors/Buffers/BufferManager.h"
 #include"Frontend/VisualFrontend/Pipeline/VisualData.h"
+
+using FrontendData = std::variant<
+    MonocularFrame,
+    StereoFrame,
+    // MultiViewFrame,
+    ImuData
+>;
 
 class FrontendManager
 {
@@ -24,8 +32,8 @@ public:
 
      bool init();
 
-    // High-level entry point
-    std::unique_ptr<Measurement> process(const SensorData& data);
+    //SENSOR DATA=BUFFERMANAGER DATA VARIANT=CAM, IMU, LIDAR
+    std::unique_ptr<Measurement> process(const FrontendData& data);
 
 private:
     std::unique_ptr<VisualFrontend> visualFrontend_;

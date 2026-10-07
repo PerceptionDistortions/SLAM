@@ -14,14 +14,17 @@
 
 //CONSTRUCTOR
 //SLAM FACTORY HAS ALREADY CREATED EVERYTHING
-MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(SLAMSystemDependencies dependencies)
+MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
+    SLAMSystemDependencies dependencies,
+    const std::string& cameraName)
+    : camera_name_(cameraName)
 {
-    sensor_manager_ =std::move(dependencies.sensorManager);
-    frontend_ =std::move(dependencies.frontend);
-    estimator_ =std::move(dependencies.estimator);
-    visualizer_ =std::move(dependencies.visualizer);
-    backend_ =std::move(dependencies.backend);
-    loop_closure_ =std::move(dependencies.loopClosure);
+    sensor_manager_ = std::move(dependencies.sensorManager);
+    frontend_ = std::move(dependencies.frontend);
+    estimator_ = std::move(dependencies.estimator);
+    visualizer_ = std::move(dependencies.visualizer);
+    backend_ = std::move(dependencies.backend);
+    loop_closure_ = std::move(dependencies.loopClosure);
 }
 
 
@@ -55,133 +58,147 @@ bool MonocularEKFSLAMSystem::init()
     return true;
 }
 
+//ONE SLAM ITERATION
+// bool MonocularEKFSLAMSystem::update()
+// {
+//     //CHECK INIT AND ATTEMPT POPING FROM BUFFER
+//     if (!initialized_) throw std::runtime_error("Monocular SLAM System not initialized.");
+//     SensorManager::Data data;
+//     if (!sensor_manager_->popNext(data)) return false;
+
+//     //ONLY 1 CAMERA DATA ALLOWED: MONO SLAM
+//     std::visit([this](const auto& sensorData)
+//     {
+//         using T = std::decay_t<decltype(sensorData)>;
+//         if constexpr (std::is_same_v<T, CameraData>)
+//         {
+//             if (sensorData.sensor_id == camera_name_)
+//             {
+//                 std::cout
+//                     << "[CAMERA]"
+//                     << " sensor=" << sensorData.sensor_id
+//                     << " timestamp=" << sensorData.timestamp
+//                     << std::endl;
+//             }
+//         }
+//     },
+//     data);
+
+//     //FOR THE GIVEN SENSOR DATA, PREPROCESS FRONTEND
+//     //VARINAT OF SENSOR DATA DETERMINES WHAT FRONTEND TO CHOOSE
+//     if (!frontend_)
+//     {
+//         std::cout << "Frontend not found" << std::endl;
+//         return false;
+//     }
+
+//     std::unique_ptr<Measurement> measurement;
+
+
+
+//     if (!measurement)
+//     {
+//         std::cout << "Frontend returned null measurement" << std::endl;
+//         return false;
+//     }
+
+
+//     return true;
+    
+
+//     // std::unique_ptr<Measurement> measurement =frontend_->process(data);
+//     // if (!measurement) return;
+
+//     // --------------------------------------------------
+//     // First valid measurement initializes estimator
+//     // --------------------------------------------------
+
+//     // if (!estimator_initialized_)
+//     // {
+//     //     const auto* visualMeasurement =
+//     //         dynamic_cast<const MonocularVisualMeasurement*>(
+//     //             measurement.get());
+
+//     //     if (!visualMeasurement)
+//     //     {
+//     //         throw std::runtime_error(
+//     //             "MonocularEKFSLAMSystem expected "
+//     //             "MonocularVisualMeasurement.");
+//     //     }
+
+//     //     StateEstimate initialState;
+
+//     //     initialState.timestamp =visualMeasurement->timestamp();
+//     //     initialState.position =visualMeasurement->position();
+//     //     initialState.velocity.setZero();
+//     //     initialState.orientation =visualMeasurement->orientation();
+//     //     initialState.accelerometerBias.setZero();
+//     //     initialState.gyroscopeBias.setZero();
+//     //     estimator_->initialize(initialState);
+//     //     estimator_initialized_ = true;
+//     //     return;
+//     // }
+
+//     // // --------------------------------------------------
+//     // // Subsequent measurements
+//     // //
+//     // // MonocularVisualMeasurement:
+//     // // PredictionAndCorrection
+//     // // --------------------------------------------------
+
+//     // estimator_->process(*measurement);
+// }
 
 bool MonocularEKFSLAMSystem::update()
 {
-    if (!initialized_)
-    {
-        throw std::runtime_error(
-            "MonocularEKFSLAMSystem must be initialized "
-            "before update.");
-    }
-
+    if (!initialized_) throw std::runtime_error("Monocular SLAM System not initialized.");
     SensorManager::Data data;
+    if (!sensor_manager_->popNext(data)) return false;
 
-    if (!sensor_manager_->popNext(data))
+    if (!frontend_)
     {
+        std::cout << "Frontend not found" << std::endl;
         return false;
     }
 
-    std::visit(
-        [](const auto& sensorData)
-        {
-            using T = std::decay_t<decltype(sensorData)>;
+    std::unique_ptr<Measurement> measurement;
 
-            if constexpr (std::is_same_v<T, CameraData>)
-            {
-                std::cout
-                    << "[CAMERA]"
-                    << " sensor=" << sensorData.sensor_id
-                    << " timestamp=" << sensorData.timestamp
-                    << std::endl;
-            }
-            else if constexpr (std::is_same_v<T, ImuData>)
-            {
-                std::cout
-                    << "[IMU]"
-                    << " sensor=" << sensorData.sensor_id
-                    << " timestamp=" << sensorData.timestamp
-                    << std::endl;
-            }
-        },
-        data);
+    // ONLY CAMERA DATA ALLOWED: MONO SLAM
+    if (std::holds_alternative<CameraData>(data))
+    {
+        const auto& cameraData =std::get<CameraData>(data);
+
+        // Only process the configured camera
+        if (cameraData.sensor_id != camera_name_) return false;
+
+        std::cout
+            << "[CAMERA] Found "
+            << cameraData.sensor_id
+            << " | timestamp=" << cameraData.timestamp
+            << std::endl;
+
+        // Convert CameraData -> FrontendData
+        FrontendData frontendData = convertCameraDataToFrontendData(cameraData);
+
+        // Send converted data to frontend
+        measurement = frontend_->process(frontendData);
+    }
+    else
+    {
+        // This monocular SLAM pipeline does not handle IMU
+        return false;
+    }
+
+    //THE RESULTING MEASURMENT IS PASSED TO THE ESTIMATOR: EKF
+    if (!measurement)
+    {
+        std::cout << "Frontend returned null measurement" << std::endl;
+        return false;
+    }
 
     return true;
-    // if (!initialized_)
-    // {
-    //     throw std::runtime_error(
-    //         "MonocularEKFSLAMSystem must be initialized "
-    //         "before update.");
-    // }
-
-    // SensorManager::Data data;
-
-    // if (!sensor_manager_->popNext(data))
-    // {
-    //     running_ = false;
-    //     return;
-    // }
-
-    // std::unique_ptr<Measurement> measurement =frontend_->process(data);
-    // if (!measurement) return;
-
-    // --------------------------------------------------
-    // First valid measurement initializes estimator
-    // --------------------------------------------------
-
-    // if (!estimator_initialized_)
-    // {
-    //     const auto* visualMeasurement =
-    //         dynamic_cast<const MonocularVisualMeasurement*>(
-    //             measurement.get());
-
-    //     if (!visualMeasurement)
-    //     {
-    //         throw std::runtime_error(
-    //             "MonocularEKFSLAMSystem expected "
-    //             "MonocularVisualMeasurement.");
-    //     }
-
-    //     StateEstimate initialState;
-
-    //     initialState.timestamp =visualMeasurement->timestamp();
-    //     initialState.position =visualMeasurement->position();
-    //     initialState.velocity.setZero();
-    //     initialState.orientation =visualMeasurement->orientation();
-    //     initialState.accelerometerBias.setZero();
-    //     initialState.gyroscopeBias.setZero();
-    //     estimator_->initialize(initialState);
-    //     estimator_initialized_ = true;
-    //     return;
-    // }
-
-    // // --------------------------------------------------
-    // // Subsequent measurements
-    // //
-    // // MonocularVisualMeasurement:
-    // // PredictionAndCorrection
-    // // --------------------------------------------------
-
-    // estimator_->process(*measurement);
 }
 
-
-// void MonocularEKFSLAMSystem::run()
-// {
-//     if (!initialized_)
-//     {
-//         throw std::runtime_error("MonocularEKFSLAMSystem must be initialized "
-//             "before run.");
-//     }
-
-//     running_ = true;
-
-//     // NORMAL PLAYBACK
-//     while (sensor_manager_->isRunning())
-//     {
-//         if (!update())
-//         {
-//             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-//         }
-//     }
-
-//     // DRAIN REMAINING DATA
-//     while (update())
-//     {
-//     }
-
-//     running_ = false;
-// }
 void MonocularEKFSLAMSystem::run()
 {
     if (!initialized_)
@@ -205,8 +222,7 @@ void MonocularEKFSLAMSystem::run()
         }
         else
         {
-            std::this_thread::sleep_for(
-                std::chrono::milliseconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
 
@@ -240,4 +256,15 @@ StateEstimate MonocularEKFSLAMSystem::getState() const
     }
 
     return estimator_->getEstimate();
+}
+
+FrontendData MonocularEKFSLAMSystem::convertCameraDataToFrontendData(
+    const CameraData& cameraData) const
+{
+    MonocularFrame frame;
+
+    frame.timestamp = cameraData.timestamp;
+    frame.camera.image = cameraData.image;
+
+    return frame;
 }

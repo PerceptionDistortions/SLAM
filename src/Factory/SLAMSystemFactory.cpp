@@ -66,6 +66,8 @@
 #include "LoopClosure/LoopClosure.h"
 #include "Visualization/PangolinVisualizer.h"
 
+#include "Sensors/Calibration/DataStructures/CameraCalibration.h"
+
 
 std::unique_ptr<SLAMSystem> SLAMSystemFactory::create(const SystemConfig& config)
 {
@@ -112,6 +114,29 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
 {
     //COMMON DEPENDENCIES
     SLAMSystemDependencies dependencies = createDependencies(config,"config/system.yaml");
+
+    //GET CAMERA CALIBRATION
+    //WILL BE USED IN CONSTRUCTOR OF VISUAL FRONTEND
+    const std::string& cameraName =config.system.monocular.camera;
+
+    auto cameraSensor =dependencies.sensorManager->getSensor(cameraName);
+
+    if (!cameraSensor)
+    {
+        throw std::runtime_error("Camera sensor not found: " + cameraName);
+    }
+
+    const ICalibration* calibration =cameraSensor->getCalibration();
+
+    const CameraCalibration* cameraCalibration =
+    dynamic_cast<const CameraCalibration*>(calibration);
+
+    if (!cameraCalibration)
+    {
+        throw std::runtime_error(
+            "Sensor '" + cameraName +
+            "' does not have CameraCalibration.");
+    }
 
     //VISUAL FRONTEND CONFIG
     const auto& visualConfig =config.frontend.visual; //VISUAL CONFIG
@@ -265,6 +290,7 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     auto visualFrontend =
     std::make_unique<MonocularVisualFrontend>(
         config.frontend,
+        *cameraCalibration,
         std::move(featureDetectorDescriptor),
         std::move(featureMatcher),
         std::move(motionBlurChecker),
@@ -313,7 +339,10 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     dependencies.visualizer=nullptr;
 
     //SLAM SYSTEM: FINAL
-    return std::make_unique<MonocularEKFSLAMSystem>(std::move(dependencies));
+    return std::make_unique<MonocularEKFSLAMSystem>(
+    std::move(dependencies),
+    config.system.monocular.camera
+    );
 }
 
 
