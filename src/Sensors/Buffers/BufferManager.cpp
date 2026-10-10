@@ -163,8 +163,7 @@ bool BufferManager::popNext(Data& data)
     // the watermark.
     updateTimeoutStates();
 
-    const std::int64_t watermark =
-        calculateWatermark();
+    const std::int64_t watermark =calculateWatermark();
 
     // No valid watermark yet.
     if (watermark ==

@@ -1,4 +1,5 @@
 #include "Frontend/VisualFrontend/FeatureMatchingTracking/BruteForceMatcher.h"
+#include <iostream>
 
 BruteForceMatcher::BruteForceMatcher(int normType)
     : matcher_(normType, false)
@@ -17,10 +18,11 @@ void BruteForceMatcher::match(
         return;
     }
 
-    matcher_.match(
-        descriptors1,
-        descriptors2,
-        matches);
+    matcher_.match(descriptors1,descriptors2,matches);
+
+    std::cout << "BruteForceMatcher: "
+              << matches.size()
+              << " matches found." << std::endl;
 }
 
 void BruteForceMatcher::knnMatch(
@@ -38,9 +40,15 @@ void BruteForceMatcher::knnMatch(
         return;
     }
 
-    matcher_.knnMatch(
-        descriptors1,
-        descriptors2,
-        matches,
-        k);
+    matcher_.knnMatch(descriptors1,descriptors2,matches,k);
+
+    std::size_t totalMatches = 0;
+
+    for (const auto& candidates : matches)
+        totalMatches += candidates.size();
+
+    // std::cout << "BruteForceMatcher: "
+    //           << matches.size() << " query descriptors, "
+    //           << totalMatches << " candidate matches (k="
+    //           << k << ")." << std::endl;
 }

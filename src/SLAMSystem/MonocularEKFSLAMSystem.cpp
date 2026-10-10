@@ -171,7 +171,7 @@ bool MonocularEKFSLAMSystem::update()
         // Only process the configured camera
         if (cameraData.sensor_id != camera_name_) return false;
 
-        std::cout
+        std::cout<<"\n"
             << "[CAMERA] Found "
             << cameraData.sensor_id
             << " | timestamp=" << cameraData.timestamp

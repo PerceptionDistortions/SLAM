@@ -9,8 +9,7 @@
 class MonocularVisualFrontend : public VisualFrontend
 {
 public:
-    // Constructor receives frontend configuration.
-    // Created by the factory.
+    //CONSTRUCTOR: CALLED BY FACTORY
     MonocularVisualFrontend(
     const FrontendConfig& config,
     const CameraCalibration& cameraCalibration,
@@ -21,27 +20,35 @@ public:
     std::unique_ptr<ICrossCheckStrategy> crossChecker,
     std::unique_ptr<IDistanceFilter> distanceFilter
     );
-
+    
+    //DESTRUCTOR
     ~MonocularVisualFrontend() override = default;
 
+    //OVERRIDEN METHODS
     std::unique_ptr<Measurement> processVisual(const VisualData& data) override;
-
     bool init() override;
     void shutdown() override;
 
 private:
-    // Frontend configuration owned by SystemConfig.
+    // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR
     const FrontendConfig& config_;
-
     CameraCalibration cameraCalibration_;
+    cv::Mat cameraMatrix_;
+    cv::Mat distCoeffs_;
+    void initializeCalibration();
+    
+    //PREVIOUS FRAME DATA
+    std::vector<cv::KeyPoint> prevKeypoints_;
+    cv::Mat prevDescriptors_;
+    bool hasPrevFrame_ = false;
 
-    void preprocessImage(const MonocularFrame& frame);
-
-    void detectFeatures();
-
-    void trackFeatures();
-
-    void matchFeatures();
+    //CURRENT FRAME DATA
+    std::vector<cv::KeyPoint> keypoints_;
+    cv::Mat descriptors_;
+    std::vector<cv::DMatch> matches_; //MATCH WITH PREVIOUS FRAME
+    
+    //PREPROCESSING, PROCESSING
+    bool preprocessImage(const MonocularFrame& frame,cv::Mat& processedImage);
 
     void estimateMotion();
 

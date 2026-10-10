@@ -67,6 +67,7 @@ add_executable(slam_app
     # Frontend
     src/Frontend/FrontendManager.cpp
     src/Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.cpp
+    src/Frontend/VisualFrontend/Pipeline/VisualFrontend.cpp
 
     #Visual Frontend
     src/Frontend/VisualFrontend/FeatureDetectionDescription/ORBDetectorDescriptor.cpp

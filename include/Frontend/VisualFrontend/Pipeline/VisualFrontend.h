@@ -6,6 +6,7 @@
 
 #include "Frontend/VisualFrontend/FeatureDetectionDescription/IFeatureDetectorDescriptor.h"
 #include "Frontend/VisualFrontend/FeatureMatchingTracking/IFeatureMatcher.h"
+#include"Frontend/VisualFrontend/FeatureMatchingTracking/IFeatureTracker.h"
 #include "Frontend/VisualFrontend/MotionBlurCheck/IMotionBlurChecker.h"
 #include "Frontend/VisualFrontend/LightExposureCheck/IExposureCorrector.h"
 #include "Frontend/VisualFrontend/CrossCheck/ICrossCheckStrategy.h"
@@ -44,8 +45,9 @@ protected:
     {
     }
 
-    std::unique_ptr<IFeatureDetectorDescriptor> featureDetector_;
-    std::unique_ptr<IFeatureMatcher> featureMatcher_;
+    std::unique_ptr<IFeatureDetectorDescriptor> featureDetector_; //ORB
+    std::unique_ptr<IFeatureMatcher> featureMatcher_; //BRUTE FORCE
+    std::unique_ptr<IFeatureTracker> featureTracker_; //OPTICAL FLOW
     std::unique_ptr<IMotionBlurChecker> motionBlurChecker_;
     std::unique_ptr<IExposureCorrector> exposureCorrector_;
     std::unique_ptr<ICrossCheckStrategy> crossChecker_;
@@ -65,9 +67,8 @@ protected:
     bool undistortImage(
     const cv::Mat& input,
     cv::Mat& undistorted,
-    const CameraCalibration& calibration) const;
-
-    bool preprocessImage(cv::Mat& image);
+    const cv::Mat& cameraMatrix,
+    const cv::Mat& distCoeffs) const;
 
     //DETECT AND COMPUTE FETAURES
     bool detectCompute(const cv::Mat& image,
@@ -76,7 +77,16 @@ protected:
 
     //DESCRIPTOR MATCHING
     //BF INCLUDES THE KNN
-    bool matchDescriptors(const cv::Mat& descriptors1,const cv::Mat& descriptors2);
+    bool matchDescriptors(
+        const cv::Mat& descriptors1,
+        const cv::Mat& descriptors2,
+        std::vector<cv::DMatch>& matches);
+
+    bool knnMatchDescriptors(
+        const cv::Mat& descriptors1,
+        const cv::Mat& descriptors2,
+        std::vector<cv::DMatch>& goodMatches,
+        int k = 2);
 
     //LOWE RATIO TEST
     //NO STRTAGEY
@@ -93,24 +103,32 @@ protected:
 
     //RANSAC : 4 METHODS
     // ESSENTIAL MATRIX + RANSAC
+    //CAMERA INTRINSICS REQUIRED
     bool estimateEssentialMatrixRANSAC(
-        const std::vector<cv::Point2f>& points1,
-        const std::vector<cv::Point2f>& points2,
+        const std::vector<cv::KeyPoint>& prevKeypoints,
+        const std::vector<cv::KeyPoint>& currKeypoints,
+        const std::vector<cv::DMatch>& matches,
+        const cv::Mat& cameraMatrix,
         cv::Mat& essentialMatrix,
         cv::Mat& inlierMask);
 
+    //RECOVER POSE
+    bool recoverRelativePose(
+        const cv::Mat& essentialMatrix,
+        const std::vector<cv::Point2f>& points1,
+        const std::vector<cv::Point2f>& points2,
+        const cv::Mat& cameraMatrix,
+        const cv::Mat& ransacInlierMask,
+        cv::Mat& R,
+        cv::Mat& t,
+        cv::Mat& poseInlierMask);
+
     // FUNDAMENTAL MATRIX + RANSAC
+    //CAMERA INTRINSICS NOT REQUIRED
     bool estimateFundamentalMatrixRANSAC(
         const std::vector<cv::Point2f>& points1,
         const std::vector<cv::Point2f>& points2,
         cv::Mat& fundamentalMatrix,
-        cv::Mat& inlierMask);
-
-    // HOMOGRAPHY + RANSAC
-    bool estimateHomographyRANSAC(
-        const std::vector<cv::Point2f>& points1,
-        const std::vector<cv::Point2f>& points2,
-        cv::Mat& homography,
         cv::Mat& inlierMask);
 
     // PnP + RANSAC
