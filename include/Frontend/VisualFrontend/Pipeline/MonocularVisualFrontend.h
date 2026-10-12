@@ -18,7 +18,8 @@ public:
     std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
     std::unique_ptr<IExposureCorrector> exposureCorrector,
     std::unique_ptr<ICrossCheckStrategy> crossChecker,
-    std::unique_ptr<IDistanceFilter> distanceFilter
+    std::unique_ptr<IDistanceFilter> distanceFilter,
+    MapManager& mapManager
     );
     
     //DESTRUCTOR

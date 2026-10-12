@@ -338,8 +338,7 @@ bool VisualFrontend::recoverRelativePose(
         points1.size() < 5 ||
         ransacInlierMask.total() != points1.size())
     {
-        std::cerr << "RecoverPose: invalid inputs."
-                  << std::endl;
+        std::cerr << "RecoverPose: invalid inputs." << std::endl;
         return false;
     }
 

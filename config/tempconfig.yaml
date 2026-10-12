@@ -20,6 +20,11 @@ system:
   visualizer: pangolin
 
 visual_frontend:
+  #PREPROCESSING
+  motion_blur: laplacian
+
+  light_exposure: clahe
+
   #orb, superpoint
   detector_descriptor: orb
 
@@ -31,20 +36,27 @@ visual_frontend:
   #bf, none
   feature_matcher: bf
 
-  #optical flow, none
-  feature_tracker: none
-
   #hamming, manhattan
   bf_norm: hamming
 
-  motion_blur: laplacian
+  #optical flow, none
+  feature_tracker: none
 
-  light_exposure: clahe
-
+  #descriptor matching and filtering
   lowe_ratio: 0.7
-
   cross_check: mutual_best
-
   distance_filtering: fixed_distance
+  
+  #RANSAC
+  recover_pose_distance_threshold: 1e6
+  minimum_landmark_pnp: 6
+
+logging:
+
+  buffers: false
+  visual_frontend: false
+  estimator: false
+  maps: false
+  visualization: false
 
 

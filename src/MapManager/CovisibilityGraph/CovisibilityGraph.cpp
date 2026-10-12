@@ -117,3 +117,4 @@ CovisibilityGraph::getEdge(
 
     return it2->second;
 }
+

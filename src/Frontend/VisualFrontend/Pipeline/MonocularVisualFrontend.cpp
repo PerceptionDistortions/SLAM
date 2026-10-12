@@ -12,14 +12,16 @@ MonocularVisualFrontend::MonocularVisualFrontend(
     std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
     std::unique_ptr<IExposureCorrector> exposureCorrector,
     std::unique_ptr<ICrossCheckStrategy> crossChecker,
-    std::unique_ptr<IDistanceFilter> distanceFilter)
+    std::unique_ptr<IDistanceFilter> distanceFilter,
+    MapManager& mapManager)
     : VisualFrontend(
           std::move(featureDetector),
           std::move(featureMatcher),
           std::move(motionBlurChecker),
           std::move(exposureCorrector),
           std::move(crossChecker),
-          std::move(distanceFilter)),
+          std::move(distanceFilter),
+          mapManager),
       config_(config),cameraCalibration_(cameraCalibration)
 {
     initializeCalibration();
@@ -32,7 +34,7 @@ bool MonocularVisualFrontend::init(){
 
 std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const VisualData& data){
 
-    //CHECK IF PROVIDED DATA VALID
+    //FRAME SHOULD NOT BE NULL
     const MonocularFrame* frame = std::get_if<MonocularFrame>(&data);
     if (frame == nullptr)
     {
@@ -86,6 +88,14 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //OPTIONAL: DISTANCE FILTERING
 
     //MANDATORY: DECISION BETWEEN PNP AND ESSENTIAL MATRIX
+    //FIRST CHECK IF ENOUGH LANDMARKS IN THE MAP
+    std::cout<<"Landmarks count: "<<mapManager_.getLandmarkCount()<<std::endl;
+    // if(mapManager_.getLandmarkCount()>=6){
+        
+    // }
+    // else{
+
+    // }
 
     //BUILD MATCHED POINTS CORRESPONDENCES
     std::vector<cv::Point2f> points1;

@@ -92,23 +92,20 @@ const std::string& configPath)
     dependencies.sensorManager =std::make_unique<SensorManager>();
     if (!dependencies.sensorManager->loadConfig(configPath))
     {
-        throw std::runtime_error(
-            "Failed to load SensorManager configuration.");
+        throw std::runtime_error("Failed to load SensorManager configuration.");
     }
 
     //MAP MANAGER
     dependencies.mapManager =std::make_unique<MapManager>();
 
-    // Other common dependencies...
+    // OTHER COMMON DEPENDENCIES IF ANY
 
     return dependencies;
 }
 
 
-// ============================================================================
-// Monocular SLAM
-// ============================================================================
 
+//MONOCULAR SLAM
 std::unique_ptr<SLAMSystem>
 SLAMSystemFactory::createMonocular(const SystemConfig& config)
 {
@@ -118,44 +115,33 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     //GET CAMERA CALIBRATION
     //WILL BE USED IN CONSTRUCTOR OF VISUAL FRONTEND
     const std::string& cameraName =config.system.monocular.camera;
-
     auto cameraSensor =dependencies.sensorManager->getSensor(cameraName);
-
     if (!cameraSensor)
     {
         throw std::runtime_error("Camera sensor not found: " + cameraName);
     }
-
     const ICalibration* calibration =cameraSensor->getCalibration();
-
-    const CameraCalibration* cameraCalibration =
-    dynamic_cast<const CameraCalibration*>(calibration);
+    const CameraCalibration* cameraCalibration =dynamic_cast<const CameraCalibration*>(calibration);
 
     if (!cameraCalibration)
     {
-        throw std::runtime_error(
-            "Sensor '" + cameraName +
-            "' does not have CameraCalibration.");
+        throw std::runtime_error("Sensor '" + cameraName +"' does not have CameraCalibration.");
     }
 
     //VISUAL FRONTEND CONFIG
     const auto& visualConfig =config.frontend.visual; //VISUAL CONFIG
-    
-    //
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetectorDescriptor;
 
     if (visualConfig.detectorDescriptor.type == "orb")
     {
-        featureDetectorDescriptor =
-            std::make_unique<ORBDetectorDescriptor>(
+        featureDetectorDescriptor =std::make_unique<ORBDetectorDescriptor>(
                 visualConfig.detectorDescriptor.nFeatures,
                 visualConfig.detectorDescriptor.scaleFactor,
                 visualConfig.detectorDescriptor.nLevels);
     }
     else
     {
-        throw std::runtime_error(
-            "Unsupported feature detector/descriptor: " +
+        throw std::runtime_error("Unsupported feature detector/descriptor: " +
             visualConfig.detectorDescriptor.type);
     }
 
@@ -238,15 +224,13 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     //CROSS CHECKER
     std::unique_ptr<ICrossCheckStrategy> crossChecker;
 
-    const auto& crossCheckConfig =
-        visualConfig.crossCheck;
+    const auto& crossCheckConfig =visualConfig.crossCheck;
 
     if (visualConfig.featureMatching.crossCheck)
     {
         if (crossCheckConfig.type == "mutual_best")
         {
-            crossChecker =
-                std::make_unique<MutualBestCrossCheck>();
+            crossChecker =std::make_unique<MutualBestCrossCheck>();
         }
         else
         {
@@ -296,7 +280,8 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
         std::move(motionBlurChecker),
         std::move(exposureCorrector),
         std::move(crossChecker),
-        std::move(distanceFilter)
+        std::move(distanceFilter),
+        *dependencies.mapManager
     );
 
     //FRONTEND IN DEPENDENCIES: ONLY VISUAL REQUIRED

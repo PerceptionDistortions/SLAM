@@ -13,6 +13,8 @@
 #include "Frontend/VisualFrontend/DistanceDescriptorFilter/IDistanceFilter.h"
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 
+#include "MapManager/MapManager.h"
+
 #include <memory>
 #include <utility>
 
@@ -35,13 +37,15 @@ protected:
         std::unique_ptr<IMotionBlurChecker> motionBlurChecker,
         std::unique_ptr<IExposureCorrector> exposureCorrector,
         std::unique_ptr<ICrossCheckStrategy> crossChecker,
-        std::unique_ptr<IDistanceFilter> distanceFilter)
+        std::unique_ptr<IDistanceFilter> distanceFilter,
+        MapManager& mapManager)
         : featureDetector_(std::move(featureDetector)),
           featureMatcher_(std::move(featureMatcher)),
           motionBlurChecker_(std::move(motionBlurChecker)),
           exposureCorrector_(std::move(exposureCorrector)),
           crossChecker_(std::move(crossChecker)),
-          distanceFilter_(std::move(distanceFilter))
+          distanceFilter_(std::move(distanceFilter)),
+          mapManager_(mapManager)
     {
     }
 
@@ -52,6 +56,8 @@ protected:
     std::unique_ptr<IExposureCorrector> exposureCorrector_;
     std::unique_ptr<ICrossCheckStrategy> crossChecker_;
     std::unique_ptr<IDistanceFilter> distanceFilter_;
+
+    MapManager& mapManager_;
   
     // - feature tracking: Optical Flow
     // - outlier rejection

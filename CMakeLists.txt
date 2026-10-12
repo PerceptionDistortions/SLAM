@@ -85,6 +85,14 @@ add_executable(slam_app
 
     #Factory
     src/Factory/SLAMSystemFactory.cpp
+
+    #Map Manager
+    src/MapManager/KeyframesLandmarks/Keyframe.cpp
+    src/MapManager/MapManager.cpp
+    src/MapManager/CovisibilityGraph/CovisibilityGraph.cpp
+    src/MapManager/KeyframesLandmarks/Landmark.cpp
+    src/MapManager/KeyframesLandmarks/LandmarkObservation.cpp
+    src/MapManager/KeyframeDatabase.cpp
 )
 
 target_include_directories(slam_app PRIVATE

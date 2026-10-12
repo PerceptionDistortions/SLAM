@@ -26,6 +26,8 @@ public:
     const std::vector<LandmarkObservation>&
     getObservations() const;
 
+    bool removeObservationByLandmarkId(LandmarkId id);
+
 private:
     KeyframeId id_;
     Timestamp timestamp_;
