@@ -1,6 +1,5 @@
 #pragma once
 
-namespace slam{
 enum class TrackState
 {
     Tentative,
@@ -8,4 +7,4 @@ enum class TrackState
     Lost,
     Triangulated,
     Landmark
-};}
+};

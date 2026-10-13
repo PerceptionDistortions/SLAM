@@ -7,9 +7,9 @@
 
 struct FeatureObservation
 {
-    slam::FrameId frameId{0};
-    slam::FeatureId featureId{0};
-    slam::CameraId cameraId{0}; //for stereo and multi view
+    FrameId frameId{0};
+    FeatureId featureId{0};
+    std::string cameraId{"cam0"}; //for stereo and multi view
 
     Eigen::Vector2d pixel{Eigen::Vector2d::Zero()};
 };

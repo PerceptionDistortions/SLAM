@@ -1,20 +1,22 @@
 #pragma once
 
+#include <cstddef>
+
 #include "Frontend/VisualFrontend/FeatureTracks/IFeatureTrack.h"
 
 class MonocularFeatureTrack final : public IFeatureTrack
 {
 public:
     explicit MonocularFeatureTrack(
-        slam::TrackId id,
+        TrackId id,
         const FeatureObservation& initialObservation);
 
     // Identity
-    slam::TrackId getId() const noexcept override;
+    TrackId getId() const noexcept override;
 
     // Lifecycle
-    slam::TrackState getState() const noexcept override;
-    void setState(slam::TrackState state) override;
+    TrackState getState() const noexcept override;
+    void setState(TrackState state) override;
 
     // Observation history
     const std::vector<FeatureObservation>&
@@ -24,10 +26,10 @@ public:
         const FeatureObservation& observation) override;
 
     // Landmark association
-    std::optional<slam::LandmarkId>
+    std::optional<LandmarkId>
     getLandmarkId() const noexcept override;
 
-    void setLandmarkId(slam::LandmarkId landmarkId) override;
+    void setLandmarkId(LandmarkId landmarkId) override;
     void clearLandmarkId() override;
 
     // Tracking quality
@@ -38,21 +40,23 @@ public:
     void setConsecutiveFailures(int count) override;
 
     // Temporal bounds
-    slam::FrameId getFirstFrameId() const noexcept override;
-    slam::FrameId getLastFrameId() const noexcept override;
+    FrameId getFirstFrameId() const noexcept override;
+    FrameId getLastFrameId() const noexcept override;
+
+    void trimObservationHistory(std::size_t maxObservations);
 
 private:
-    slam::TrackId id_{0};
+    TrackId id_{0};
 
-    slam::TrackState state_{slam::TrackState::Tentative};
+    TrackState state_{TrackState::Tentative};
 
     std::vector<FeatureObservation> observations_;
 
-    std::optional<slam::LandmarkId> landmarkId_;
+    std::optional<LandmarkId> landmarkId_;
 
     int consecutiveInliers_{0};
     int consecutiveFailures_{0};
 
-    slam::FrameId firstFrameId_{0};
-    slam::FrameId lastFrameId_{0};
+    FrameId firstFrameId_{0};
+    FrameId lastFrameId_{0};
 };

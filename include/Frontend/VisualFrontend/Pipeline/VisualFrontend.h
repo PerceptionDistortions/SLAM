@@ -12,6 +12,7 @@
 #include "Frontend/VisualFrontend/CrossCheck/ICrossCheckStrategy.h"
 #include "Frontend/VisualFrontend/DistanceDescriptorFilter/IDistanceFilter.h"
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
+#include"Frontend/VisualFrontend/TrackManager/ITrackManager.h"
 
 #include "MapManager/MapManager.h"
 
@@ -38,6 +39,7 @@ protected:
         std::unique_ptr<IExposureCorrector> exposureCorrector,
         std::unique_ptr<ICrossCheckStrategy> crossChecker,
         std::unique_ptr<IDistanceFilter> distanceFilter,
+        std::unique_ptr<ITrackManager> trackManager,
         MapManager& mapManager)
         : featureDetector_(std::move(featureDetector)),
           featureMatcher_(std::move(featureMatcher)),
@@ -45,6 +47,7 @@ protected:
           exposureCorrector_(std::move(exposureCorrector)),
           crossChecker_(std::move(crossChecker)),
           distanceFilter_(std::move(distanceFilter)),
+          trackManager_(std::move(trackManager)),
           mapManager_(mapManager)
     {
     }
@@ -56,6 +59,7 @@ protected:
     std::unique_ptr<IExposureCorrector> exposureCorrector_;
     std::unique_ptr<ICrossCheckStrategy> crossChecker_;
     std::unique_ptr<IDistanceFilter> distanceFilter_;
+    std::unique_ptr<ITrackManager> trackManager_;
 
     MapManager& mapManager_;
   
@@ -149,4 +153,11 @@ protected:
 
     //MOTION GATING CHECK BETWEEN FRAMES
     //IF THE FRAME DISPLACMENT REALISTIC?
+
+//UTILITY
+protected:
+    std::vector<FeatureObservation> createObservations(
+    FrameId frameId,
+    std::string cameraId,
+    const std::vector<cv::KeyPoint>& keypoints) const;
 };

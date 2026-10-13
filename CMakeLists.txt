@@ -76,6 +76,9 @@ add_executable(slam_app
     src/Frontend/VisualFrontend/LightExposure/CLAHEExposureCorrector.cpp
     src/Frontend/VisualFrontend/CrossCheck/MutualBestCrossCheck.cpp
     src/Frontend/VisualFrontend/DescriptorDistanceFilter/FixedDistanceFilter.cpp
+    src/Frontend/VisualFrontend/FeatureTracks/MonocularFeatureTrack.cpp
+    src/Frontend/VisualFrontend/TrackManager/MonocularTrackManager.cpp
+    src/Frontend/VisualFrontend/Triangulator/MidpointTriangulator.cpp
 
     # SLAM System
     src/SLAMSystem/MonocularEKFSLAMSystem.cpp

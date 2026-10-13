@@ -2,11 +2,12 @@
 
 #include <Eigen/Core>
 
-#include "MapManager/MapTypes.h"
+#include "AliasesEnumsTypes/CommonAliases.h"
 
 //A LANDMARK OBSERVED IN A KEYFRAME
 //WHAT FEATURE ID IT CORRESONDS TO
 //STORED BY A KEYFRAME
+
 class LandmarkObservation
 {
 public:

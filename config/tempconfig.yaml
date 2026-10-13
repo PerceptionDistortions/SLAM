@@ -51,6 +51,11 @@ visual_frontend:
   recover_pose_distance_threshold: 1e6
   minimum_landmark_pnp: 6
 
+  #TRACK MANAGEMENT
+  tentative_track_max_misses: 3
+  tentative_track_max_age: 5
+  active_track_max_misses: 3
+
 logging:
 
   buffers: false

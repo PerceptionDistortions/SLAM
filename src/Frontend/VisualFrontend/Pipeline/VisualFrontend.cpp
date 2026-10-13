@@ -395,3 +395,29 @@ bool VisualFrontend::recoverRelativePose(
 
     return true;
 }
+
+std::vector<FeatureObservation> VisualFrontend::createObservations(
+    FrameId frameId,
+    std::string cameraId,
+    const std::vector<cv::KeyPoint>& keypoints) const
+{
+    std::vector<FeatureObservation> observations;
+    observations.reserve(keypoints.size());
+
+    for (std::size_t i = 0; i < keypoints.size(); ++i)
+    {
+        FeatureObservation observation;
+
+        observation.frameId = frameId;
+        observation.cameraId = cameraId;
+        observation.featureId = static_cast<FeatureId>(i);
+
+        observation.pixel = Eigen::Vector2d(
+            static_cast<double>(keypoints[i].pt.x),
+            static_cast<double>(keypoints[i].pt.y));
+
+        observations.push_back(std::move(observation));
+    }
+
+    return observations;
+}

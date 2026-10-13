@@ -18,19 +18,15 @@ class MonocularTrackManager final : public ITrackManager
 {
 public:
     explicit MonocularTrackManager(
-        int maxConsecutiveFailures = 2,
+        int maxConsecutiveFailures = 4,
         std::size_t maxObservationHistory = 30);
 
     ~MonocularTrackManager() override = default;
 
     MonocularTrackManager(const MonocularTrackManager&) = delete;
-    MonocularTrackManager& operator=(
-        const MonocularTrackManager&) = delete;
+    MonocularTrackManager& operator=(const MonocularTrackManager&) = delete;
 
-    // -------------------------------------------------
-    // Track lookup
-    // -------------------------------------------------
-
+    //TRACK LOOKUP
     [[nodiscard]]
     IFeatureTrack* getTrack(TrackId trackId) noexcept override;
 
@@ -47,8 +43,7 @@ public:
     getMonocularTrack(TrackId trackId) const noexcept;
 
     [[nodiscard]]
-    std::vector<TrackId> getTrackIds(
-        TrackState state) const override;
+    std::vector<TrackId> getTrackIds(TrackState state) const override;
 
     [[nodiscard]]
     std::vector<TrackId> getTrackIds() const override;
@@ -93,11 +88,8 @@ public:
     void reset() override;
 
 private:
-    TrackId createTrack(
-        const FeatureObservation& observation);
-
-    bool appendObservation(
-        MonocularFeatureTrack& track,
+    TrackId createTrack(const FeatureObservation& observation);
+    bool appendObservation(MonocularFeatureTrack& track,
         const FeatureObservation& observation);
 
     int maxConsecutiveFailures_;
@@ -106,9 +98,7 @@ private:
     TrackId nextTrackId_{1};
 
     // This manager owns tracks, never Landmark objects.
-    std::unordered_map<
-        TrackId,
-        std::unique_ptr<MonocularFeatureTrack>> tracks_;
+    std::unordered_map<TrackId,std::unique_ptr<MonocularFeatureTrack>> tracks_;
 
     // Index-aligned associations for consecutive frames.
     std::vector<TrackId> previousFeatureTrackIds_;

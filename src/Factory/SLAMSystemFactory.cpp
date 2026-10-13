@@ -67,6 +67,7 @@
 #include "Visualization/PangolinVisualizer.h"
 
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
+#include"Frontend/VisualFrontend/TrackManager/MonocularTrackManager.h"
 
 
 std::unique_ptr<SLAMSystem> SLAMSystemFactory::create(const SystemConfig& config)
@@ -256,12 +257,11 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
         << distanceFilterConfig.maxDistance
         << std::endl;
 
+    //DISTANCE FILTER CHECK
     if (distanceFilterConfig.type == "fixed_distance")
     {
-        distanceFilter =
-            std::make_unique<FixedDistanceFilter>(
-                distanceFilterConfig.maxDistance
-            );
+        distanceFilter =std::make_unique<FixedDistanceFilter>(
+                distanceFilterConfig.maxDistance);
     }
     else
     {
@@ -270,6 +270,11 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
             distanceFilterConfig.type
         );
     }
+
+    //MONOCULAR TRACK MANAGER
+    std::unique_ptr<ITrackManager> trackManager=
+    std::make_unique<MonocularTrackManager>();
+
     //VISUAL FRONTEND
     auto visualFrontend =
     std::make_unique<MonocularVisualFrontend>(
@@ -281,7 +286,9 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
         std::move(exposureCorrector),
         std::move(crossChecker),
         std::move(distanceFilter),
-        *dependencies.mapManager
+        std::move(trackManager),
+        *dependencies.mapManager,
+        cameraName
     );
 
     //FRONTEND IN DEPENDENCIES: ONLY VISUAL REQUIRED

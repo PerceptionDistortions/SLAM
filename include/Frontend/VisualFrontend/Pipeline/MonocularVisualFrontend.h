@@ -19,7 +19,9 @@ public:
     std::unique_ptr<IExposureCorrector> exposureCorrector,
     std::unique_ptr<ICrossCheckStrategy> crossChecker,
     std::unique_ptr<IDistanceFilter> distanceFilter,
-    MapManager& mapManager
+    std::unique_ptr<ITrackManager> trackManager,
+    MapManager& mapManager,
+    std::string camid
     );
     
     //DESTRUCTOR
@@ -31,7 +33,11 @@ public:
     void shutdown() override;
 
 private:
-    // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR
+    //FRAME ID COUNTER
+    FrameId nextFrameId_{0};
+    
+    // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR, Camera Id
+    std::string cameraId_;
     const FrontendConfig& config_;
     CameraCalibration cameraCalibration_;
     cv::Mat cameraMatrix_;

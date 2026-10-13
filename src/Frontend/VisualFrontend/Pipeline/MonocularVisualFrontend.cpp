@@ -13,7 +13,9 @@ MonocularVisualFrontend::MonocularVisualFrontend(
     std::unique_ptr<IExposureCorrector> exposureCorrector,
     std::unique_ptr<ICrossCheckStrategy> crossChecker,
     std::unique_ptr<IDistanceFilter> distanceFilter,
-    MapManager& mapManager)
+    std::unique_ptr<ITrackManager> trackManager,
+    MapManager& mapManager,
+    std::string camId)
     : VisualFrontend(
           std::move(featureDetector),
           std::move(featureMatcher),
@@ -21,8 +23,10 @@ MonocularVisualFrontend::MonocularVisualFrontend(
           std::move(exposureCorrector),
           std::move(crossChecker),
           std::move(distanceFilter),
+          std::move(trackManager),
           mapManager),
-      config_(config),cameraCalibration_(cameraCalibration)
+      config_(config),cameraCalibration_(cameraCalibration),
+      cameraId_(std::move(camId))
 {
     initializeCalibration();
 }
@@ -35,22 +39,20 @@ bool MonocularVisualFrontend::init(){
 std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const VisualData& data){
 
     //FRAME SHOULD NOT BE NULL
+    //ASSIGN FRAME ID IF SUCCESS
     const MonocularFrame* frame = std::get_if<MonocularFrame>(&data);
     if (frame == nullptr)
-    {
-        std::cerr << "MonocularVisualFrontend: ""VisualData does not contain MonocularFrame."
-                  << std::endl;
+    { 
+        std::cerr << "MonocularFrame not valid."<< std::endl;
         return nullptr;
     }
+    const FrameId currentFrameId = nextFrameId_++;
 
     //PREPROCESS IMAGE: UNDISTORT, GRAYSCALE, MOTION BLUR, EXPOSURE
     cv::Mat processedImage;
     if (!preprocessImage(*frame, processedImage))
     {
-        std::cerr << "MonocularVisualFrontend: "
-                     "Image preprocessing failed."
-                  << std::endl;
-
+        std::cerr << "Image preprocessing failed."<< std::endl;
         return nullptr;
     }
 
@@ -59,14 +61,20 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //USE PREPROCESSED IMAGE, NOT ORIGINAL IMAGE
     if(!detectCompute(processedImage, keypoints_, descriptors_))
     {
-        std::cerr << "MonocularVisualFrontend: "
-                     "Feature detection and description failed."<< std::endl;
+        std::cerr << "Feature detection and description failed."<< std::endl;
         return nullptr;
     }
 
-    //IF FIRST FRAME, DO NOT COMPUTE FURTHER
+
+    //IF FIRST FRAME: UPDATE PREV FRAME AND ABORT
     if(!hasPrevFrame_)
     {
+        const std::vector<FeatureObservation> currentObservations =
+        createObservations(currentFrameId, cameraId_, keypoints_);
+
+        // Initialize tentative tracks for the first frame.
+        trackManager_->update(currentObservations, {}, {});
+
         prevKeypoints_ = keypoints_;
         prevDescriptors_ = descriptors_.clone();
         hasPrevFrame_ = true;
@@ -76,11 +84,10 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //FEATURE MATCHING
     //IF NORMAL MATCH, USE LOWE
     //IF KNN MATCH, NO LOWE
+    //KNN COVERS NORMAL MATCH TOO
     if(!knnMatchDescriptors(prevDescriptors_, descriptors_,matches_))
     {
-        std::cerr << "MonocularVisualFrontend: ""Feature matching failed."
-                  << std::endl;
-
+        std::cerr << "Feature matching failed."<< std::endl;
         return nullptr;
     }
 
@@ -90,6 +97,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //MANDATORY: DECISION BETWEEN PNP AND ESSENTIAL MATRIX
     //FIRST CHECK IF ENOUGH LANDMARKS IN THE MAP
     std::cout<<"Landmarks count: "<<mapManager_.getLandmarkCount()<<std::endl;
+    //TODO: BASED ON NUMBER OF ACTIVE LANDMARS, RANSAC MODE
     // if(mapManager_.getLandmarkCount()>=6){
         
     // }
@@ -100,38 +108,47 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //BUILD MATCHED POINTS CORRESPONDENCES
     std::vector<cv::Point2f> points1;
     std::vector<cv::Point2f> points2;
+    std::vector<cv::DMatch> validMatches;
 
     points1.reserve(matches_.size());
     points2.reserve(matches_.size());
+    validMatches.reserve(matches_.size());
 
     for (const auto& match : matches_)
     {
-        if (match.queryIdx < 0 ||match.trainIdx < 0 ||match.queryIdx >=
-                static_cast<int>(prevKeypoints_.size()) ||
-            match.trainIdx >=static_cast<int>(keypoints_.size()))
+        if (match.queryIdx < 0 ||match.trainIdx < 0 ||match.queryIdx >=static_cast<int>(prevKeypoints_.size()) ||
+            match.trainIdx >=static_cast<int>(keypoints_.size())) continue;
+
+        const cv::Point2f& p1 =
+        prevKeypoints_[match.queryIdx].pt;
+
+        const cv::Point2f& p2 = keypoints_[match.trainIdx].pt;
+
+        if (!std::isfinite(p1.x) || !std::isfinite(p1.y) ||
+            !std::isfinite(p2.x) || !std::isfinite(p2.y))
         {
             continue;
         }
 
-        points1.push_back(prevKeypoints_[match.queryIdx].pt);
-        points2.push_back(keypoints_[match.trainIdx].pt);
+        points1.push_back(p1);
+        points2.push_back(p2);
+        validMatches.push_back(match);
     }
 
     //ESSENTIAL MATRIX RANSAC
-    cv::Mat essentialMatrix;
-    cv::Mat inlierMask;
+    //Separate checks for E and the geometric inlier
+    cv::Mat essentialMatrix; //RESULT: GEOMETRY BETWEEN 2 FRAMES
+    cv::Mat inlierMask; //USED TO VERIFY WHICH OF MATCHES ARE ALIGNED WITH GEOMETRY
 
     if (!estimateEssentialMatrixRANSAC(
             prevKeypoints_,
             keypoints_,
-            matches_,
+            validMatches,
             cameraMatrix_,
             essentialMatrix,
             inlierMask))
     {
-        std::cerr << "MonocularVisualFrontend: "
-                    "Essential matrix estimation failed."
-                << std::endl;
+        std::cerr << "Essential matrix estimation failed."<< std::endl;
         return nullptr;
     }
 
@@ -150,9 +167,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
             t,
             poseInlierMask))
     {
-        std::cerr << "MonocularVisualFrontend: "
-                    "Relative pose recovery failed."
-                << std::endl;
+        std::cerr << "Relative pose recovery failed."<< std::endl;
         return nullptr;
     }
 
@@ -161,6 +176,50 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //           << "\nRotation:\n" << R
     //           << "\nTranslation direction:\n" << t
     //           << std::endl;
+
+    //UPDATE TENTATIVE AND ACTIVE TRACKS
+    //masks should have dimensions predictable for indexing: RESHAPE METHOD
+    cv::Mat finalMask = poseInlierMask.reshape(1, 1);
+
+    if (finalMask.type() != CV_8UC1 ||finalMask.total() != validMatches.size())
+    {
+        std::cerr << "MonocularVisualFrontend: "
+                    "Pose inlier mask does not match matches_."<< std::endl;
+        return nullptr;
+    }
+
+    // Convert OpenCV's mask to the format expected by TrackManager.
+    std::vector<std::uint8_t> geometricInlierMask(validMatches.size(), 0);
+    for (std::size_t i = 0; i < validMatches.size(); ++i)
+    {
+        geometricInlierMask[i] =finalMask.at<std::uint8_t>(0, static_cast<int>(i)) != 0;
+    }
+
+    // Create observations for the current keypoints.
+    // Use your actual frame ID and camera ID member names here.
+    const std::vector<FeatureObservation> currentObservations =createObservations(
+            currentFrameId,
+            cameraId_,
+            keypoints_);
+    
+    // Update existing tracks and create tentative tracks for
+    // unmatched current-frame features.
+    trackManager_->update(currentObservations,validMatches,geometricInlierMask);
+
+    // Print track statistics.
+    std::cout << "[Tracks]"
+            << " Total: "
+            << trackManager_->getTrackIds().size()
+            << " | Tentative: "
+            << trackManager_->getTrackIds(
+                    TrackState::Tentative).size()
+            << " | Active: "
+            << trackManager_->getTrackIds(
+                    TrackState::Active).size()
+            << " | Triangulated: "
+            << trackManager_->getTrackIds(
+                    TrackState::Triangulated).size()
+            << std::endl;
 
     //UPDATE PREV FRAME DATA
     prevKeypoints_ = keypoints_;

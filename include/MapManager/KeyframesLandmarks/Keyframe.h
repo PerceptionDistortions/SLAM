@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "MapManager/MapTypes.h"
+#include "AliasesEnumsTypes/CommonAliases.h"
 #include "MapManager/Pose.h"
 #include "MapManager/KeyframesLandmarks/LandmarkObservation.h"
 

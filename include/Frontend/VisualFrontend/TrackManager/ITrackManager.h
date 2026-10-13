@@ -6,8 +6,6 @@
 #include "AliasesEnumsTypes/CommonAliases.h"
 #include "Frontend/VisualFrontend/FeatureTracks/IFeatureTrack.h"
 
-using namespace slam;
-
 class ITrackManager
 {
 public:
@@ -23,12 +21,16 @@ public:
 
     // Retrieve tracks in a particular lifecycle state.
     [[nodiscard]]
-    virtual std::vector<TrackId> getTrackIds(
-        TrackState state) const = 0;
+    virtual std::vector<TrackId> getTrackIds(TrackState state) const = 0;
 
     // All currently managed tracks.
     [[nodiscard]]
     virtual std::vector<TrackId> getTrackIds() const = 0;
+
+    virtual void update(
+    const std::vector<FeatureObservation>& currentObservations,
+    const std::vector<cv::DMatch>& matches,
+    const std::vector<std::uint8_t>& geometricInlierMask) = 0;
 
     // Remove stale tracks and clear tracking state.
     virtual void prune() = 0;

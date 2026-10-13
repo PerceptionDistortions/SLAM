@@ -1,8 +1,7 @@
 #pragma once
 
 #include <Eigen/Core>
-
-#include "MapManager/MapTypes.h"
+#include "AliasesEnumsTypes/CommonAliases.h"
 
 class Landmark
 {

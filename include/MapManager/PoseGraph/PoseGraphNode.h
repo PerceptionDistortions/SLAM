@@ -3,7 +3,6 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-#include "MapManager/MapTypes.h"
 #include "MapManager/Pose.h"
 
 class PoseGraphNode
