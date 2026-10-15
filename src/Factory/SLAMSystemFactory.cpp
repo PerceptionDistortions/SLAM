@@ -68,6 +68,9 @@
 
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 #include"Frontend/VisualFrontend/TrackManager/MonocularTrackManager.h"
+#include"Frontend/VisualFrontend/MotionGating/MonocularMotionGating.h"
+#include"Frontend/VisualFrontend/PnP/IPnPAlgorithm.h"
+#include"Frontend/VisualFrontend/PnP/OpenCVEPnPRansac.h"
 
 
 std::unique_ptr<SLAMSystem> SLAMSystemFactory::create(const SystemConfig& config)
@@ -110,24 +113,20 @@ const std::string& configPath)
 std::unique_ptr<SLAMSystem>
 SLAMSystemFactory::createMonocular(const SystemConfig& config)
 {
-    //COMMON DEPENDENCIES
+    //COMMON DEPENDENCIES: MAP AND SENSORS
     SLAMSystemDependencies dependencies = createDependencies(config,"config/system.yaml");
 
-    //GET CAMERA CALIBRATION
-    //WILL BE USED IN CONSTRUCTOR OF VISUAL FRONTEND
+
+
+    //CAMERA CALIBRATION VALUES ARE REQUIRED IN FRONTEND
     const std::string& cameraName =config.system.monocular.camera;
     auto cameraSensor =dependencies.sensorManager->getSensor(cameraName);
-    if (!cameraSensor)
-    {
-        throw std::runtime_error("Camera sensor not found: " + cameraName);
-    }
+    if (!cameraSensor) throw std::runtime_error("Camera sensor not found: " + cameraName);
     const ICalibration* calibration =cameraSensor->getCalibration();
     const CameraCalibration* cameraCalibration =dynamic_cast<const CameraCalibration*>(calibration);
+    if (!cameraCalibration) throw std::runtime_error("Sensor '" + cameraName +"' does not have CameraCalibration.");
 
-    if (!cameraCalibration)
-    {
-        throw std::runtime_error("Sensor '" + cameraName +"' does not have CameraCalibration.");
-    }
+
 
     //VISUAL FRONTEND CONFIG
     const auto& visualConfig =config.frontend.visual; //VISUAL CONFIG
@@ -142,8 +141,7 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     }
     else
     {
-        throw std::runtime_error("Unsupported feature detector/descriptor: " +
-            visualConfig.detectorDescriptor.type);
+        throw std::runtime_error("Unsupported feature detector/descriptor: " + visualConfig.detectorDescriptor.type);
     }
 
     //FEATURE MATCHER
@@ -200,23 +198,20 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     //LIGHT EXPOSURE CHECKER
     std::unique_ptr<IExposureCorrector> exposureCorrector;
 
-    const auto& illuminationConfig =
-        visualConfig.preprocessing.illumination;
+    const auto& illuminationConfig =visualConfig.preprocessing.illumination;
 
     if (illuminationConfig.enabled)
     {
         if (illuminationConfig.method == "clahe")
         {
-            exposureCorrector =
-                std::make_unique<CLAHEExposureCorrector>(
+            exposureCorrector =std::make_unique<CLAHEExposureCorrector>(
                     illuminationConfig.clahe.clipLimit,
                     illuminationConfig.clahe.tileGridSize
                 );
         }
         else
         {
-            throw std::runtime_error(
-                "Unsupported illumination method: " +
+            throw std::runtime_error("Unsupported illumination method: " +
                 illuminationConfig.method
             );
         }
@@ -260,20 +255,22 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     //DISTANCE FILTER CHECK
     if (distanceFilterConfig.type == "fixed_distance")
     {
-        distanceFilter =std::make_unique<FixedDistanceFilter>(
-                distanceFilterConfig.maxDistance);
+        distanceFilter =std::make_unique<FixedDistanceFilter>(distanceFilterConfig.maxDistance);
     }
     else
     {
-        throw std::runtime_error(
-            "Unsupported distance filtering strategy: " +
-            distanceFilterConfig.type
-        );
+        throw std::runtime_error("Unsupported distance filtering strategy: " +
+            distanceFilterConfig.type);
     }
 
     //MONOCULAR TRACK MANAGER
-    std::unique_ptr<ITrackManager> trackManager=
-    std::make_unique<MonocularTrackManager>();
+    std::unique_ptr<ITrackManager> trackManager=std::make_unique<MonocularTrackManager>();
+
+    //MONOCULAR MOTION GATING
+    std::unique_ptr<IMotionGating> motionGating=std::make_unique<MonocularMotionGating>();
+
+    //PNP STRATEGY
+    std::unique_ptr<IPnPAlgorithm> pnpRansac=std::make_unique<OpenCVEPnPRansac>();
 
     //VISUAL FRONTEND
     auto visualFrontend =
@@ -287,6 +284,8 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
         std::move(crossChecker),
         std::move(distanceFilter),
         std::move(trackManager),
+        std::move(motionGating),
+        std::move(pnpRansac),
         *dependencies.mapManager,
         cameraName
     );

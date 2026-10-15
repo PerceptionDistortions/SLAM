@@ -13,6 +13,8 @@
 #include "Frontend/VisualFrontend/DistanceDescriptorFilter/IDistanceFilter.h"
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 #include"Frontend/VisualFrontend/TrackManager/ITrackManager.h"
+#include"Frontend/VisualFrontend/MotionGating/IMotionGating.h"
+#include"Frontend/VisualFrontend/PnP/IPnPAlgorithm.h"
 
 #include "MapManager/MapManager.h"
 
@@ -40,6 +42,8 @@ protected:
         std::unique_ptr<ICrossCheckStrategy> crossChecker,
         std::unique_ptr<IDistanceFilter> distanceFilter,
         std::unique_ptr<ITrackManager> trackManager,
+        std::unique_ptr<IMotionGating> motionGating,
+        std::unique_ptr<IPnPAlgorithm> pnpRansac,
         MapManager& mapManager)
         : featureDetector_(std::move(featureDetector)),
           featureMatcher_(std::move(featureMatcher)),
@@ -48,6 +52,8 @@ protected:
           crossChecker_(std::move(crossChecker)),
           distanceFilter_(std::move(distanceFilter)),
           trackManager_(std::move(trackManager)),
+          motionGating_(std::move(motionGating)),
+          pnpRansac_(std::move(pnpRansac)),
           mapManager_(mapManager)
     {
     }
@@ -60,6 +66,8 @@ protected:
     std::unique_ptr<ICrossCheckStrategy> crossChecker_;
     std::unique_ptr<IDistanceFilter> distanceFilter_;
     std::unique_ptr<ITrackManager> trackManager_;
+    std::unique_ptr<IMotionGating> motionGating_;
+    std::unique_ptr<IPnPAlgorithm> pnpRansac_;
 
     MapManager& mapManager_;
   

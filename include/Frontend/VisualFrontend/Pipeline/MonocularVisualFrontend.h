@@ -20,6 +20,8 @@ public:
     std::unique_ptr<ICrossCheckStrategy> crossChecker,
     std::unique_ptr<IDistanceFilter> distanceFilter,
     std::unique_ptr<ITrackManager> trackManager,
+    std::unique_ptr<IMotionGating> motionGating,
+    std::unique_ptr<IPnPAlgorithm> pnpRansac,
     MapManager& mapManager,
     std::string camid
     );
@@ -35,6 +37,7 @@ public:
 private:
     //FRAME ID COUNTER
     FrameId nextFrameId_{0};
+    FrameId prevFrameId_{0};
     
     // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR, Camera Id
     std::string cameraId_;
@@ -56,14 +59,4 @@ private:
     
     //PREPROCESSING, PROCESSING
     bool preprocessImage(const MonocularFrame& frame,cv::Mat& processedImage);
-
-    void estimateMotion();
-
-    void validateMotion();
-
-    void triangulate();
-
-    void manageLandmarks();
-
-    void manageKeyframes();
 };

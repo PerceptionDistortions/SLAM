@@ -51,10 +51,37 @@ visual_frontend:
   recover_pose_distance_threshold: 1e6
   minimum_landmark_pnp: 6
 
+  #PnP RANSAC
+  pnp_iterations_count: 100;
+  pnp_reprojection_threshold: 3.0
+  pnp_confidence: 0.99
+  pnp_min_correspondence: 6
+  pnp_refine_with_inliers: true
+
   #TRACK MANAGEMENT
+  track_maximum_observation: 30
   tentative_track_max_misses: 3
   tentative_track_max_age: 5
   active_track_max_misses: 3
+
+  #MOTION GATING
+
+  #POSE ONLY REFINEMENT
+  pose_only_refinement: ceres
+  pose_only_refine_correspondence: 20
+
+  #POSE ONLY: CONFIG
+  ceres_por_max_iterations: 15
+  ceres_por_max_time_seconds: 0.05
+  ceres_por_use_robust_loss: true
+  ceres_por_huber_loss_scale: 3.0
+  ceres_por_function_tolerance: 1.0e-8
+  ceres_por_gradient_tolerance: 1.0e-10
+  ceres_por_parameter_tolerance: 1.0e-8
+  ceres_por_linear_solver: "dense_qr"
+  
+  #TRIANGULATION
+  triangulator: mid_point
 
 logging:
 

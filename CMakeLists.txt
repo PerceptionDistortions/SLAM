@@ -78,7 +78,9 @@ add_executable(slam_app
     src/Frontend/VisualFrontend/DescriptorDistanceFilter/FixedDistanceFilter.cpp
     src/Frontend/VisualFrontend/FeatureTracks/MonocularFeatureTrack.cpp
     src/Frontend/VisualFrontend/TrackManager/MonocularTrackManager.cpp
-    src/Frontend/VisualFrontend/Triangulator/MidpointTriangulator.cpp
+    src/Frontend/VisualFrontend/Triangulation/MidpointTriangulator.cpp
+    src/Frontend/VisualFrontend/MotionGating/MonocularMotionGating.cpp
+    src/Frontend/VisualFrontend/PnP/OpenCVEPnPRansac.cpp
 
     # SLAM System
     src/SLAMSystem/MonocularEKFSLAMSystem.cpp

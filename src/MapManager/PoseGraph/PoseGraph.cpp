@@ -13,9 +13,7 @@ void PoseGraph::addNode(
     }
 
     nodes_[keyframeId] =
-        std::make_shared<PoseGraphNode>(
-            keyframeId,
-            pose);
+        std::make_shared<PoseGraphNode>(keyframeId,pose);
 }
 
 void PoseGraph::removeNode(

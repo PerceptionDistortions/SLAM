@@ -51,14 +51,3 @@ struct TriangulationResult
         return failure == TriangulationFailure::None;
     }
 };
-
-class ITriangulator
-{
-public:
-    virtual ~ITriangulator() = default;
-
-    [[nodiscard]]
-    virtual TriangulationResult triangulate(
-        const TriangulationObservation& first,
-        const TriangulationObservation& second) const = 0;
-};
