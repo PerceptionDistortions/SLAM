@@ -16,24 +16,15 @@ public:
 
     KeyframeId getId() const;
     Timestamp getTimestamp() const;
-
     const Pose& getPose() const;
     void setPose(const Pose& pose);
-
-    void addObservation(
-        const LandmarkObservation& observation);
-
-    const std::vector<LandmarkObservation>&
-    getObservations() const;
-
+    void addObservation(const LandmarkObservation& observation);
+    const std::vector<LandmarkObservation>& getObservations() const;
     bool removeObservationByLandmarkId(LandmarkId id);
 
 private:
     KeyframeId id_;
     Timestamp timestamp_;
-
     Pose pose_;
-
-    std::vector<LandmarkObservation>
-        observations_;
+    std::vector<LandmarkObservation> observations_;
 };

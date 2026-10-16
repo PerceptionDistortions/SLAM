@@ -4,7 +4,11 @@
 #include"Configuration/Configs/SystemConfig.h"
 #include"Configuration/Configs/FrontendConfig.h"
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
-
+#include "Frontend/VisualFrontend/Parallax/IParallaxChecker.h"
+#include "Frontend/VisualFrontend/Baseline/IBaselineChecker.h"
+#include"Frontend/VisualFrontend/Parallax/MonocularParallaxChecker.h"
+#include"Frontend/VisualFrontend/Baseline/MonocularBaselineChecker.h"
+#include"AliasesEnumsTypes/CameraPose.h"
 
 class MonocularVisualFrontend : public VisualFrontend
 {
@@ -51,12 +55,54 @@ private:
     std::vector<cv::KeyPoint> prevKeypoints_;
     cv::Mat prevDescriptors_;
     bool hasPrevFrame_ = false;
+    CameraPose prevFramePose_;
 
     //CURRENT FRAME DATA
     std::vector<cv::KeyPoint> keypoints_;
     cv::Mat descriptors_;
     std::vector<cv::DMatch> matches_; //MATCH WITH PREVIOUS FRAME
+    CameraPose currFramePose_;
     
     //PREPROCESSING, PROCESSING
     bool preprocessImage(const MonocularFrame& frame,cv::Mat& processedImage);
+
+    //PARALLAX AND BASELINE CHECKS
+    std::unique_ptr<IParallaxChecker> parallaxChecker_;
+    std::unique_ptr<IBaselineChecker> baselineChecker_;
+
+private:
+//UTILITY FOR PROCESS VISUAL
+    bool estimateFramePose(
+        const std::vector<cv::Point2f>& points1,
+        const std::vector<cv::Point2f>& points2,
+        const std::vector<cv::DMatch>& validMatches,
+        bool usePnP,
+        cv::Mat& essentialMatrix,
+        cv::Mat& inlierMask,
+        cv::Mat& R,
+        cv::Mat& t,
+        cv::Mat& poseInlierMask,
+        PnPResult& pnpResult);
+
+    void buildValidCorrespondences(
+        std::vector<cv::Point2f>& points1,
+        std::vector<cv::Point2f>& points2,
+        std::vector<cv::DMatch>& validMatches);
+
+    std::vector<std::uint8_t> initialTrackUpdate(
+        const cv::Mat& finalMask,
+        const std::vector<cv::DMatch>& validMatches,
+        FrameId currentFrameId);
+
+    bool evaluateMotionGating(
+        const std::vector<cv::DMatch>& validMatches,
+        const cv::Mat& inlierMask,
+        const cv::Mat& finalMask,
+        bool usePnP,
+        const cv::Mat& R,
+        const cv::Mat& t,
+        const PnPResult& pnpResult,
+        FrameId currentFrameId);
+
+    std::vector<TrackId> parallaxBaselineCheck(FrameId currentFrameId,bool usePnP);
 };

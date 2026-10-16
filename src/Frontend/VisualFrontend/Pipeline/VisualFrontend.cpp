@@ -169,23 +169,20 @@ bool VisualFrontend::knnMatchDescriptors(
 
     if (!featureMatcher_)
     {
-        std::cerr << "VisualFrontend: Feature matcher "
-                     "is not initialized."
-                  << std::endl;
+        std::cerr << "Feature matcher "
+                     "is not initialized."<< std::endl;
         return false;
     }
 
     if (descriptors1.empty() || descriptors2.empty())
     {
-        std::cerr << "VisualFrontend: Empty descriptors."
-                  << std::endl;
+        std::cerr << "VisualFrontend: Empty descriptors."<< std::endl;
         return false;
     }
 
     if (k < 2)
     {
-        std::cerr << "VisualFrontend: KNN matching requires "
-                     "k >= 2 for the ratio test."
+        std::cerr << "VisualFrontend: KNN matching requires k >= 2 for the ratio test."
                   << std::endl;
         return false;
     }
@@ -230,7 +227,7 @@ bool VisualFrontend::knnMatchDescriptors(
         return false;
     }
 
-    std::cout << "knn matches:<<"<<goodMatches.size()<<std::endl;
+    std::cout << "knn matches: "<<goodMatches.size()<<std::endl;
 
     return true;
 }
@@ -300,8 +297,8 @@ bool VisualFrontend::estimateEssentialMatrixRANSAC(
     const double inlierRatio =
         static_cast<double>(inlierCount) / points1.size();
 
-    std::cout << "[E-RANSAC] Matches (inliers): " << inlierCount
-              << ", inlier ratio: " << inlierRatio
+    std::cout << "E-RANSAC Inliers: " << inlierCount
+              << ", ratio: " << inlierRatio
               << std::endl;
 
     if (inlierCount < 5) {
@@ -374,8 +371,7 @@ bool VisualFrontend::recoverRelativePose(
             : 0.0;
 
     // Print diagnostics BEFORE checking for failure.
-    std::cout << "[RecoverPose]"
-          << " surviving inliers=" << cheiralityInliers
+    std::cout << "RecoverPose(E) inliers: "<< cheiralityInliers
           << ", ratio=" << cheiralityRatio
           << std::endl;
 

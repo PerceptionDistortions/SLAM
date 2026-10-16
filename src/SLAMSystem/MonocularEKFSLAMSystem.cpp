@@ -20,6 +20,7 @@ MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
     : camera_name_(cameraName)
 {
     sensor_manager_ = std::move(dependencies.sensorManager);
+    map_manager_ = std::move(dependencies.mapManager);
     frontend_ = std::move(dependencies.frontend);
     estimator_ = std::move(dependencies.estimator);
     visualizer_ = std::move(dependencies.visualizer);

@@ -6,6 +6,7 @@
 #include "Visualization/Visualizer.h"
 #include "Backend/Backend.h"
 #include "LoopClosure/LoopClosure.h"
+#include "MapManager/MapManager.h"
 
 #include <memory>
 
@@ -30,6 +31,9 @@ public:
 protected:
     //SENSORS, BUFFERS, CALIBRATORS, SENSOR CONTEXT, DRIVERS
     std::unique_ptr<SensorManager> sensor_manager_;
+
+    // Keeps the map alive while frontends and other modules use it.
+    std::shared_ptr<MapManager> map_manager_;
 
     //HOLDS ALL TYPES OF PROPROCESSING FRONTENDS: OWNS THEM
     //TAKES THE DATA PACKET FROM BUFFER AND ROUTES TO PROPER FRONTEND

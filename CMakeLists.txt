@@ -81,6 +81,8 @@ add_executable(slam_app
     src/Frontend/VisualFrontend/Triangulation/MidpointTriangulator.cpp
     src/Frontend/VisualFrontend/MotionGating/MonocularMotionGating.cpp
     src/Frontend/VisualFrontend/PnP/OpenCVEPnPRansac.cpp
+    src/Frontend/VisualFrontend/Parallax/MonocularParallaxChecker.cpp
+    src/Frontend/VisualFrontend/Baseline/MonocularBaselineChecker.cpp
 
     # SLAM System
     src/SLAMSystem/MonocularEKFSLAMSystem.cpp
