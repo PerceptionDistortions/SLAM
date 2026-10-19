@@ -417,3 +417,100 @@ std::vector<FeatureObservation> VisualFrontend::createObservations(
 
     return observations;
 }
+
+//REPROJECTION ERROR CHECK
+#include <cmath>
+#include <limits>
+
+double VisualFrontend::computeReprojectionError(
+    const Eigen::Vector3d& pointWorld,
+    const Eigen::Vector2d& observedPixel,
+    const Eigen::Matrix4d& Tcw,
+    const Eigen::Matrix3d& K) const
+{
+    const double invalidError =
+        std::numeric_limits<double>::infinity();
+
+    // Reject invalid inputs.
+    if (!pointWorld.allFinite() ||
+        !observedPixel.allFinite() ||
+        !Tcw.allFinite() ||
+        !K.allFinite())
+    {
+        return invalidError;
+    }
+
+    // Transform the 3D point from world coordinates
+    // into camera coordinates.
+    const Eigen::Vector3d pointCamera =
+        Tcw.block<3, 3>(0, 0) * pointWorld +
+        Tcw.block<3, 1>(0, 3);
+
+    // Reject points behind or too close to the camera.
+    if (!pointCamera.allFinite() ||
+        pointCamera.z() <= 1e-6)
+    {
+        return invalidError;
+    }
+
+    // Project the point into the image.
+    const Eigen::Vector3d projectedHomogeneous =
+        K * pointCamera;
+
+    if (!projectedHomogeneous.allFinite() ||
+        std::abs(projectedHomogeneous.z()) < 1e-12)
+    {
+        return invalidError;
+    }
+
+    const Eigen::Vector2d projectedPixel =
+        projectedHomogeneous.head<2>() /
+        projectedHomogeneous.z();
+
+    if (!projectedPixel.allFinite())
+        return invalidError;
+
+    // Return Euclidean reprojection error in pixels.
+    const double error =
+        (projectedPixel - observedPixel).norm();
+
+    return std::isfinite(error) ? error : invalidError;
+}
+
+//CHIRALITY CHECK OF A 3D POINT
+bool VisualFrontend::isPointInFrontOfCamera(
+    const Eigen::Vector3d& pointWorld,
+    const Eigen::Matrix4d& Tcw) const
+{
+    if (!pointWorld.allFinite() || !Tcw.allFinite())
+        return false;
+
+    // Transform the world point into camera coordinates.
+    const Eigen::Vector3d pointCamera =
+        Tcw.block<3, 3>(0, 0) * pointWorld +
+        Tcw.block<3, 1>(0, 3);
+
+    if (!pointCamera.allFinite())
+        return false;
+
+    // Positive Z means the point is in front of the camera.
+    return pointCamera.z() > 1e-6;
+}
+
+//NUMERICAL VALUES VALIDATION
+bool VisualFrontend::isPointValid(
+    const Eigen::Vector3d& pointWorld) const
+{
+    // Reject NaN and infinite coordinates.
+    if (!pointWorld.allFinite())
+        return false;
+
+    // Reject points outside the configured world-coordinate bounds.
+    if ((pointWorld.array() < minPointBounds_.array()).any() ||
+        (pointWorld.array() > maxPointBounds_.array()).any())
+    {
+        return false;
+    }
+
+    return true;
+}

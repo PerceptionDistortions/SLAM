@@ -27,10 +27,14 @@ public:
     [[nodiscard]]
     virtual std::vector<TrackId> getTrackIds() const = 0;
 
+    //UPDATES TRACKS
     virtual void update(
     const std::vector<FeatureObservation>& currentObservations,
     const std::vector<cv::DMatch>& matches,
     const std::vector<std::uint8_t>& geometricInlierMask) = 0;
+
+    //TRIANGULATED
+    virtual bool markTriangulated(TrackId trackId) = 0;
 
     // Remove stale tracks and clear tracking state.
     virtual void prune() = 0;

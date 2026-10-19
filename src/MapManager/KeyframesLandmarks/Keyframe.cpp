@@ -1,3 +1,4 @@
+
 #include "MapManager/KeyframesLandmarks/Keyframe.h"
 
 #include <algorithm>
@@ -9,7 +10,7 @@
 Keyframe::Keyframe(
     KeyframeId id,
     Timestamp timestamp,
-    const Pose& pose)
+    const CameraPose& pose)
     : id_(id),
       timestamp_(timestamp),
       pose_(pose)
@@ -30,7 +31,7 @@ Timestamp Keyframe::getTimestamp() const
     return timestamp_;
 }
 
-const Pose& Keyframe::getPose() const
+const CameraPose& Keyframe::getPose() const
 {
     return pose_;
 }
@@ -39,7 +40,7 @@ const Pose& Keyframe::getPose() const
 // POSE MANAGEMENT
 // ============================================================
 
-void Keyframe::setPose(const Pose& pose)
+void Keyframe::setPose(const CameraPose& pose)
 {
     pose_ = pose;
 }

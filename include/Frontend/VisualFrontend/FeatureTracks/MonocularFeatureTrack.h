@@ -7,28 +7,20 @@
 class MonocularFeatureTrack final : public IFeatureTrack
 {
 public:
-    explicit MonocularFeatureTrack(
-        TrackId id,
-        const FeatureObservation& initialObservation);
+    explicit MonocularFeatureTrack(TrackId id,const FeatureObservation& initialObservation);
 
-    // Identity
     TrackId getId() const noexcept override;
 
-    // Lifecycle
+    //GET AND SET STATE: TENTATIVE, ACTIVE, ETC.
     TrackState getState() const noexcept override;
     void setState(TrackState state) override;
 
-    // Observation history
-    const std::vector<FeatureObservation>&
-    getObservations() const noexcept override;
+    //GET COMPLETE OBSERVATIONS AND ADD OBSERVATIONS
+    const std::vector<FeatureObservation>& getObservations() const noexcept override;
+    bool addObservation(const FeatureObservation& observation) override;
 
-    bool addObservation(
-        const FeatureObservation& observation) override;
-
-    // Landmark association
-    std::optional<LandmarkId>
-    getLandmarkId() const noexcept override;
-
+    // LANDMARK ID WILL BE SEPARATE FROM FRAME ID
+    std::optional<LandmarkId> getLandmarkId() const noexcept override;
     void setLandmarkId(LandmarkId landmarkId) override;
     void clearLandmarkId() override;
 

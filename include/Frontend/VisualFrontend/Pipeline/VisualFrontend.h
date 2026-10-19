@@ -168,4 +168,25 @@ protected:
     FrameId frameId,
     std::string cameraId,
     const std::vector<cv::KeyPoint>& keypoints) const;
+
+    //REPROJECTION ERROR CHECK
+    protected:
+    [[nodiscard]]
+    double computeReprojectionError(
+        const Eigen::Vector3d& pointWorld,
+        const Eigen::Vector2d& observedPixel,
+        const Eigen::Matrix4d& Tcw,
+        const Eigen::Matrix3d& K) const;
+
+    //CHIRALITY CHECK OF A 3D POINT IN FRONT OF CAMERA
+    [[nodiscard]]
+    bool isPointInFrontOfCamera(
+        const Eigen::Vector3d& pointWorld,
+        const Eigen::Matrix4d& Tcw) const;
+
+    //NUMERICAL VALUES VALIDATION
+    [[nodiscard]]
+    bool isPointValid(const Eigen::Vector3d& pointWorld) const;
+    Eigen::Vector3d minPointBounds_{Eigen::Vector3d::Constant(-100.0)};
+    Eigen::Vector3d maxPointBounds_{Eigen::Vector3d::Constant(100.0)};
 };

@@ -17,9 +17,7 @@
 class MonocularTrackManager final : public ITrackManager
 {
 public:
-    explicit MonocularTrackManager(
-        int maxConsecutiveFailures = 4,
-        std::size_t maxObservationHistory = 30);
+    explicit MonocularTrackManager(int maxConsecutiveFailures = 4,std::size_t maxObservationHistory = 30);
 
     ~MonocularTrackManager() override = default;
 
@@ -71,13 +69,11 @@ public:
     // -------------------------------------------------
 
     // Called after successful triangulation.
-    bool markTriangulated(TrackId trackId);
+    bool markTriangulated(TrackId trackId) override;
 
     // Called after MapManager accepts and registers
     // the corresponding landmark.
-    bool associateLandmark(
-        TrackId trackId,
-        LandmarkId landmarkId);
+    bool associateLandmark(TrackId trackId,LandmarkId landmarkId);
 
     // Mark a track as lost when appropriate.
     bool markLost(TrackId trackId);
@@ -89,8 +85,7 @@ public:
 
 private:
     TrackId createTrack(const FeatureObservation& observation);
-    bool appendObservation(MonocularFeatureTrack& track,
-        const FeatureObservation& observation);
+    bool appendObservation(MonocularFeatureTrack& track,const FeatureObservation& observation);
 
     int maxConsecutiveFailures_;
     std::size_t maxObservationHistory_;

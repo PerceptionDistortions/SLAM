@@ -5,6 +5,7 @@
 #include <utility>
 #include<iostream>
 #include <memory>
+#include <Eigen/Geometry>
 
 MonocularVisualFrontend::MonocularVisualFrontend(
     const FrontendConfig& config,
@@ -208,10 +209,8 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //1. Baseline not to be used without pnp, arbitrary and normalized scale
     //2. Parallax threshold relaxation brings better results
     //3. Checked low trigulation candidates with ground truth pose comparison: relevant
-    //4. Do not check parallax from previous frame but from the last keyframe of current track.
+    //4. Do not check parallax from previous frame but from the last keyframe of current track. TODO
     
-
-    //KEYFRAME DETERMINATION
     
     
     //POSE ONLY REFINEMENT: MINIMIZE THE REPROJECTION ERROR
@@ -223,6 +222,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //TRACK STATE: ACTIVE ONLY, NO TENTATIVE
     //NO LANDMARK SHOULD BE PREVIOUS FORMED FOR TRACK
     //NUMBER OF OBSERVATIONS: 3
+    //CHECK IF THE POINT IS ALREADY TRIANGULATED
 
     MidpointTriangulatorConfig triangulatorConfig;
     triangulatorConfig.minParallaxDegrees = 0.3;
@@ -242,29 +242,29 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         return Tcw;
     };
 
+    if (!prevFramePose_.valid || !currFramePose_.valid) return nullptr;
+
     const Eigen::Matrix4d previousTcw = makeWorldToCamera(prevFramePose_);
     const Eigen::Matrix4d currentTcw = makeWorldToCamera(currFramePose_);
+
+    int triangulatedTracks=0;
 
     for (const TrackId trackId : triangulationCandidates)
     {
         IFeatureTrack* track = trackManager_->getTrack(trackId);
-        if (track == nullptr)
-            continue;
+        if (track == nullptr) continue;
+        if (track->getState() == TrackState::Triangulated) continue;
 
         const FeatureObservation* previousObservation = nullptr;
         const FeatureObservation* currentObservation = nullptr;
         for (const auto& observation : track->getObservations())
         {
-            if (observation.cameraId != cameraId_)
-                continue;
-            if (observation.frameId == prevFrameId_)
-                previousObservation = &observation;
-            else if (observation.frameId == currentFrameId)
-                currentObservation = &observation;
+            if (observation.cameraId != cameraId_) continue;
+            if (observation.frameId == prevFrameId_) previousObservation = &observation;
+            else if (observation.frameId == currentFrameId) currentObservation = &observation;
         }
 
-        if (previousObservation == nullptr || currentObservation == nullptr)
-            continue;
+        if (previousObservation == nullptr || currentObservation == nullptr) continue;
 
         TriangulationObservation first;
         first.pixel = cv::Point2d(previousObservation->pixel.x(), previousObservation->pixel.y());
@@ -277,20 +277,87 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         second.K = intrinsicMatrix;
 
         const TriangulationResult result = triangulator.triangulate(first, second);
-        if (!result.valid())
-            continue;
+        if (!result.valid()) continue;
 
-        std::cout << "[Triangulation] track=" << trackId
-                  << " point_world=" << result.pointWorld.transpose()
-                  << std::endl;
+        //VALIDATE THE TRIANGULATION
+        //REPROJECTION ERROR IN CURRENT FRAME AND PREV FRAME
+        //CHIRALITY CHECK IN PREV FRAME
+        //NUMERICAL VALUES SHOULD BE VALID
+
+        const Eigen::Vector2d previousPixel(
+            previousObservation->pixel.x(),
+            previousObservation->pixel.y());
+
+        const Eigen::Vector2d currentPixel(
+            currentObservation->pixel.x(),
+            currentObservation->pixel.y());
+
+        if (!validateTriangulatedPoint(
+        result.pointWorld,
+        previousPixel,
+        currentPixel,
+        previousTcw,
+        currentTcw,
+        intrinsicMatrix))
+        {
+            //std::cout<<"Triangulation init failed for track."<<std::endl;
+            continue;
+        }
+
+        //PROMOTE THE TRACK IF TRNAGULATION SUCCESS
+        if (!trackManager_->markTriangulated(trackId)) continue;
+        triangulatedTracks++;
+
+
+        // std::cout << "[Triangulation] track=" << trackId
+        //           << " point_world=" << result.pointWorld.transpose()
+        //           << std::endl;
     }
-   
     //CHALLENGES FACED IN TRIANGULATION
     //1. Segmentation fault: core dumped, very large number of landmarks
     //2. The triangulated point values for same feature point varies largely across each iteration.
     //This is because no landmark was present in the map manager.
+    //Check that the point is already triangulated and skip
 
-    //UPDATE TRACKS
+    // KEYFRAME DETERMINATION BASED ON NUMBER OF VERIFIED TRNAGULATIONS
+    //PERCENT OF VALIDATIONS TOO
+    std::cout<<"Validated triangulation count: "<<triangulatedTracks<<std::endl;
+
+    const double verifiedRatio =triangulationCandidates.empty()
+        ? 0.0: static_cast<double>(triangulatedTracks) /static_cast<double>(triangulationCandidates.size());
+
+    std::cout<<"Validated percent: "<<verifiedRatio<<std::endl;
+
+    if (verifiedRatio>=0.3 && currFramePose_.valid && triangulatedTracks>=10)
+    {
+        std::cout<<"Checking for keyframe validation"<<std::endl;
+        auto keyframe = std::make_shared<Keyframe>(
+            currentFrameId,
+            frame->timestamp,
+            currFramePose_
+        );
+
+        if (mapManager_.addKeyframe(keyframe))
+        {
+            std::cout << "[Keyframe] Added frame "<< currentFrameId << std::endl;
+        }
+        else{
+            std::cout<<"Map manager rejected track."<<std::endl;
+        }
+    }
+    else{
+        std::cout<<"ratio or pose invalid."<<std::endl;
+    }
+    std::cout<<"Total active keyframes: "<<mapManager_.getKeyframeCount()<<std::endl;
+    //CHALLENGES FACED WITH KEYFRAME DETERMINATION
+    //1. All frames are being changed to keyframes
+    //2. Do not rely in total candidates but realized landmarks
+
+    //VALIDATE TRIANGULATED POINTS
+    //VALID NUMERICAL VALUES
+    //REPROJECTION ERROR
+    //CHIRALITY OF 3D POINT ACHIEVED
+
 
     //REPROJECTION ERROR FOR TRIANGULATED TRACKS: QUALITY
 
@@ -907,4 +974,46 @@ MonocularVisualFrontend::parallaxBaselineCheck(
     }
 
     return triangulationCandidates;
+}
+
+//VALIDATE A TRIANGULATED POINT
+bool MonocularVisualFrontend::validateTriangulatedPoint(
+    const Eigen::Vector3d& pointWorld,
+    const Eigen::Vector2d& previousPixel,
+    const Eigen::Vector2d& currentPixel,
+    const Eigen::Matrix4d& previousTcw,
+    const Eigen::Matrix4d& currentTcw,
+    const Eigen::Matrix3d& intrinsicMatrix) const
+{
+    // 1. Numerical validity and configured 3D bounds.
+    if (!isPointValid(pointWorld))
+        return false;
+
+    // 2. Cheirality in both observing frames.
+    if (!isPointInFrontOfCamera(pointWorld, previousTcw) ||
+        !isPointInFrontOfCamera(pointWorld, currentTcw))
+    {
+        return false;
+    }
+
+    // 3. Reprojection error in both observing frames.
+    const double previousError = computeReprojectionError(
+        pointWorld,
+        previousPixel,
+        previousTcw,
+        intrinsicMatrix);
+
+    const double currentError = computeReprojectionError(
+        pointWorld,
+        currentPixel,
+        currentTcw,
+        intrinsicMatrix);
+
+    if (previousError > maxTriangulationReprojectionErrorPixels_ ||
+        currentError > maxTriangulationReprojectionErrorPixels_)
+    {
+        return false;
+    }
+
+    return true;
 }

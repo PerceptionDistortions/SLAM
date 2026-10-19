@@ -105,4 +105,17 @@ private:
         FrameId currentFrameId);
 
     std::vector<TrackId> parallaxBaselineCheck(FrameId currentFrameId,bool usePnP);
+
+    //VALIDATE A TRNAGULATED POINT
+    [[nodiscard]]
+    bool validateTriangulatedPoint(
+        const Eigen::Vector3d& pointWorld,
+        const Eigen::Vector2d& previousPixel,
+        const Eigen::Vector2d& currentPixel,
+        const Eigen::Matrix4d& previousTcw,
+        const Eigen::Matrix4d& currentTcw,
+        const Eigen::Matrix3d& intrinsicMatrix) const;
+
+    double minTriangulationReprojectionErrorPixels_{0.0};
+    double maxTriangulationReprojectionErrorPixels_{3.0};
 };
