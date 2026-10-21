@@ -17,48 +17,25 @@
 class MonocularTrackManager final : public ITrackManager
 {
 public:
-    explicit MonocularTrackManager(int maxConsecutiveFailures = 4,std::size_t maxObservationHistory = 30);
+    //CONSTRUCTOR
+    explicit MonocularTrackManager(int maxConsecutiveFailures = 2,std::size_t maxObservationHistory = 30);
 
+    //DESTRUCTOR
     ~MonocularTrackManager() override = default;
 
     MonocularTrackManager(const MonocularTrackManager&) = delete;
     MonocularTrackManager& operator=(const MonocularTrackManager&) = delete;
 
     //TRACK LOOKUP
-    [[nodiscard]]
-    IFeatureTrack* getTrack(TrackId trackId) noexcept override;
+    [[nodiscard]] IFeatureTrack* getTrack(TrackId trackId) noexcept override;
+    [[nodiscard]] const IFeatureTrack* getTrack(TrackId trackId) const noexcept override;
+    [[nodiscard]] MonocularFeatureTrack* getMonocularTrack(TrackId trackId) noexcept;
+    [[nodiscard]] const MonocularFeatureTrack* getMonocularTrack(TrackId trackId) const noexcept;
+    [[nodiscard]] std::vector<TrackId> getTrackIds(TrackState state) const override;
+    [[nodiscard]] std::vector<TrackId> getTrackIds() const override;
 
-    [[nodiscard]]
-    const IFeatureTrack*
-    getTrack(TrackId trackId) const noexcept override;
+    //TEMPORAL TRACKING IF REQUIRED: TODO
 
-    [[nodiscard]]
-    MonocularFeatureTrack*
-    getMonocularTrack(TrackId trackId) noexcept;
-
-    [[nodiscard]]
-    const MonocularFeatureTrack*
-    getMonocularTrack(TrackId trackId) const noexcept;
-
-    [[nodiscard]]
-    std::vector<TrackId> getTrackIds(TrackState state) const override;
-
-    [[nodiscard]]
-    std::vector<TrackId> getTrackIds() const override;
-
-    // -------------------------------------------------
-    // Temporal tracking
-    // -------------------------------------------------
-
-    // currentObservations must be ordered consistently
-    // with current-frame keypoint/descriptor indices.
-    //
-    // matches:
-    //   queryIdx = previous-frame feature index
-    //   trainIdx = current-frame feature index
-    //
-    // geometricInlierMask[i] != 0 means matches[i]
-    // passed the frontend's geometric verification.
     void update(
         const std::vector<FeatureObservation>& currentObservations,
         const std::vector<cv::DMatch>& matches,

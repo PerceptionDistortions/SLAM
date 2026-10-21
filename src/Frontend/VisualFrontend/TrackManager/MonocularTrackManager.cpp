@@ -102,11 +102,14 @@ bool MonocularTrackManager::appendObservation(MonocularFeatureTrack& track,
     return true;
 }
 
+
 void MonocularTrackManager::update(
     const std::vector<FeatureObservation>& currentObservations,
     const std::vector<cv::DMatch>& matches,
     const std::vector<std::uint8_t>& geometricInlierMask)
 {
+    constexpr int kConsecutiveInliersToActivate = 2;
+
     const std::size_t currentCount = currentObservations.size();
 
     currentFeatureTrackIds_.assign(currentCount, TrackId{0});
@@ -116,10 +119,9 @@ void MonocularTrackManager::update(
 
     std::vector<bool> currentAssigned(currentCount, false);
 
-    // If multiple previous features match one current feature, keep
-    // the geometrically verified match with the lowest descriptor distance.
-    std::vector<std::size_t> bestMatchForCurrent(
-        currentCount, matches.size());
+    // Collect valid geometrically verified candidate matches.
+    std::vector<std::size_t> candidateMatchIndices;
+    candidateMatchIndices.reserve(matches.size());
 
     for (std::size_t i = 0; i < matches.size(); ++i)
     {
@@ -130,6 +132,7 @@ void MonocularTrackManager::update(
         }
 
         const cv::DMatch& match = matches[i];
+
         if (match.queryIdx < 0 || match.trainIdx < 0)
         {
             continue;
@@ -137,71 +140,88 @@ void MonocularTrackManager::update(
 
         const std::size_t previousIndex =
             static_cast<std::size_t>(match.queryIdx);
+
         const std::size_t currentIndex =
             static_cast<std::size_t>(match.trainIdx);
 
         if (previousIndex >= previousFeatureTrackIds_.size() ||
-            currentIndex >= currentCount ||
-            previousFeatureTrackIds_[previousIndex] == TrackId{0})
+            currentIndex >= currentCount)
         {
             continue;
         }
 
-        const std::size_t bestIndex = bestMatchForCurrent[currentIndex];
-        if (bestIndex == matches.size() ||
-            match.distance < matches[bestIndex].distance)
+        const TrackId trackId =
+            previousFeatureTrackIds_[previousIndex];
+
+        if (trackId == TrackId{0})
         {
-            bestMatchForCurrent[currentIndex] = i;
+            continue;
         }
+
+        candidateMatchIndices.push_back(i);
     }
 
-    // Continue tracks using geometrically verified matches.
-    for (std::size_t i = 0; i < matches.size(); ++i)
+    // Process the strongest descriptor matches first.
+    std::sort(
+        candidateMatchIndices.begin(),
+        candidateMatchIndices.end(),
+        [&matches](std::size_t lhs, std::size_t rhs)
+        {
+            return matches[lhs].distance < matches[rhs].distance;
+        });
+
+    // Assign verified matches one-to-one:
+    // - each current feature receives at most one track;
+    // - each existing track continues at most once per frame.
+    for (const std::size_t matchIndex : candidateMatchIndices)
     {
-        // Mask entries must correspond to matches[i].
-        if (i >= geometricInlierMask.size() ||
-            geometricInlierMask[i] == 0)
+        const cv::DMatch& match = matches[matchIndex];
+
+        const std::size_t previousIndex =
+            static_cast<std::size_t>(match.queryIdx);
+
+        const std::size_t currentIndex =
+            static_cast<std::size_t>(match.trainIdx);
+
+        if (currentAssigned[currentIndex])
         {
             continue;
         }
 
-        const cv::DMatch& match = matches[i];
+        const TrackId trackId =
+            previousFeatureTrackIds_[previousIndex];
 
-        if (match.queryIdx < 0 || match.trainIdx < 0)
-        {
-            continue;
-        }
-
-        const std::size_t previousIndex =static_cast<std::size_t>(match.queryIdx);
-        const std::size_t currentIndex =static_cast<std::size_t>(match.trainIdx);
-
-        if (previousIndex >= previousFeatureTrackIds_.size() ||currentIndex >= currentCount) continue;
-        if (bestMatchForCurrent[currentIndex] != i) continue;
-        if (currentAssigned[currentIndex]) continue;
-        const TrackId trackId = previousFeatureTrackIds_[previousIndex];
-        if (trackId == TrackId{0}) continue;
-
-        // One track may continue at most once per frame.
         if (continuedTracks.find(trackId) != continuedTracks.end())
         {
             continue;
         }
 
-        MonocularFeatureTrack* track = getMonocularTrack(trackId);
+        MonocularFeatureTrack* track =
+            getMonocularTrack(trackId);
 
-        if (track == nullptr || track->getState() == TrackState::Lost) continue;
-
-        if (!appendObservation(*track,currentObservations[currentIndex]))
+        // Preserve existing Lost-state behavior.
+        if (track == nullptr ||
+            track->getState() == TrackState::Lost)
         {
             continue;
         }
 
-        track->setConsecutiveInliers(track->getConsecutiveInliers() + 1);
+        if (!appendObservation(
+                *track,
+                currentObservations[currentIndex]))
+        {
+            continue;
+        }
+
+        track->setConsecutiveInliers(
+            track->getConsecutiveInliers() + 1);
+
         track->setConsecutiveFailures(0);
 
-        // Promote a tentative track after its first successful
-        // geometrically verified continuation.
-        if (track->getState() == TrackState::Tentative && track->getConsecutiveInliers() >= 3)
+        // Promote after two consecutive successful continuations.
+        if (track->getState() == TrackState::Tentative &&
+            track->getConsecutiveInliers() >=
+                kConsecutiveInliersToActivate)
         {
             track->setState(TrackState::Active);
         }
@@ -211,8 +231,7 @@ void MonocularTrackManager::update(
         continuedTracks.insert(trackId);
     }
 
-    
-    // Count misses for every existing track not continued this frame.
+    // Update misses and preserve the existing deletion policy.
     for (auto it = tracks_.begin(); it != tracks_.end();)
     {
         const TrackId trackId = it->first;
@@ -226,7 +245,9 @@ void MonocularTrackManager::update(
 
         track.setConsecutiveInliers(0);
 
-        const int failures = track.getConsecutiveFailures() + 1;
+        const int failures =
+            track.getConsecutiveFailures() + 1;
+
         track.setConsecutiveFailures(failures);
 
         if (failures >= maxConsecutiveFailures_)
@@ -239,8 +260,7 @@ void MonocularTrackManager::update(
         }
     }
 
-
-    // Unassigned current observations start new tentative tracks.
+    // Create tentative tracks for unassigned current features.
     for (std::size_t i = 0; i < currentCount; ++i)
     {
         if (currentAssigned[i])
@@ -252,7 +272,7 @@ void MonocularTrackManager::update(
             createTrack(currentObservations[i]);
     }
 
-    // Preserve exact feature-index alignment for the next frame.
+    // Preserve feature-index alignment for the next frame.
     previousFeatureTrackIds_ = currentFeatureTrackIds_;
     previousObservations_ = currentObservations;
 }

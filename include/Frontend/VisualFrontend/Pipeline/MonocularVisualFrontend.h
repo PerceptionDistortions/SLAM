@@ -94,6 +94,8 @@ private:
         const std::vector<cv::DMatch>& validMatches,
         FrameId currentFrameId);
 
+    void triangulatedTrackUpdated(FrameId currentFrameId);
+
     bool evaluateMotionGating(
         const std::vector<cv::DMatch>& validMatches,
         const cv::Mat& inlierMask,

@@ -7,6 +7,7 @@
 #include <memory>
 #include <Eigen/Geometry>
 
+//CONSTRUCTOR
 MonocularVisualFrontend::MonocularVisualFrontend(
     const FrontendConfig& config,
     const CameraCalibration& cameraCalibration,
@@ -353,13 +354,6 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //1. All frames are being changed to keyframes
     //2. Do not rely in total candidates but realized landmarks
 
-    //VALIDATE TRIANGULATED POINTS
-    //VALID NUMERICAL VALUES
-    //REPROJECTION ERROR
-    //CHIRALITY OF 3D POINT ACHIEVED
-
-
-    //REPROJECTION ERROR FOR TRIANGULATED TRACKS: QUALITY
 
     //DECIDE LANDMARKS
 
@@ -747,22 +741,16 @@ MonocularVisualFrontend::initialTrackUpdate(
     FrameId currentFrameId)
 {
     // Convert OpenCV's mask to the format expected by TrackManager.
-    std::vector<std::uint8_t> geometricInlierMask(
-        validMatches.size(), 0);
+    std::vector<std::uint8_t> geometricInlierMask(validMatches.size(), 0);
 
     for (std::size_t i = 0; i < validMatches.size(); ++i)
     {
-        geometricInlierMask[i] =
-            finalMask.at<std::uint8_t>(
-                0, static_cast<int>(i)) != 0;
+        geometricInlierMask[i] =finalMask.at<std::uint8_t>(0, static_cast<int>(i)) != 0;
     }
 
     // Create observations for the current keypoints.
     const std::vector<FeatureObservation> currentObservations =
-        createObservations(
-            currentFrameId,
-            cameraId_,
-            keypoints_);
+        createObservations(currentFrameId,cameraId_,keypoints_);
 
     // Update existing tracks and create tentative tracks for
     // unmatched current-frame features.
@@ -1016,4 +1004,53 @@ bool MonocularVisualFrontend::validateTriangulatedPoint(
     }
 
     return true;
+}
+
+//TRIANGULATED TRACK UPDATE
+void MonocularVisualFrontend::triangulatedTrackUpdated(
+    FrameId currentFrameId)
+{
+    constexpr int MAX_CONSECUTIVE_FAILURES = 3;
+    const auto trackIds =trackManager_->getTrackIds(TrackState::Triangulated);
+    for (const TrackId trackId : trackIds)
+    {
+        IFeatureTrack* track =trackManager_->getTrack(trackId);
+        if (track == nullptr) continue;
+        const auto landmarkId = track->getLandmarkId();
+        if (!landmarkId.has_value()) continue;
+        const auto& observations = track->getObservations();
+
+        if (observations.empty())
+            continue;
+
+        // Only validate tracks observed in the current frame.
+        if (observations.back().frameId != currentFrameId)
+            continue;
+
+        // TODO: Retrieve the existing landmark from MapManager.
+        // TODO: Project it using the current camera pose.
+        // TODO: Compute reprojection error against observations.back().
+        // TODO: Update consecutive inlier/failure counters.
+
+        // Once the reprojection result is available:
+        //
+        // if (reprojectionValid)
+        // {
+        //     track->setConsecutiveInliers(
+        //         track->getConsecutiveInliers() + 1);
+        //     track->setConsecutiveFailures(0);
+        // }
+        // else
+        // {
+        //     track->setConsecutiveInliers(0);
+        //     track->setConsecutiveFailures(
+        //         track->getConsecutiveFailures() + 1);
+        //
+        //     if (track->getConsecutiveFailures() >=
+        //         MAX_CONSECUTIVE_FAILURES)
+        //     {
+        //         // Apply your chosen demotion policy.
+        //     }
+        // }
+    }
 }

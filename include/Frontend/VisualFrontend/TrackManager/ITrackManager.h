@@ -11,21 +11,15 @@ class ITrackManager
 public:
     virtual ~ITrackManager() = default;
 
-    // Track lookup
-    [[nodiscard]]
-    virtual IFeatureTrack* getTrack(TrackId trackId) noexcept = 0;
+    //GET TRACK BY TRACK ID
+    [[nodiscard]] virtual IFeatureTrack* getTrack(TrackId trackId) noexcept = 0;
+    [[nodiscard]] virtual const IFeatureTrack* getTrack(TrackId trackId) const noexcept = 0;
 
-    [[nodiscard]]
-    virtual const IFeatureTrack*
-    getTrack(TrackId trackId) const noexcept = 0;
+    // GET LIST OF ALL TRACKS OF A PARTICULAR TYPE
+    [[nodiscard]] virtual std::vector<TrackId> getTrackIds(TrackState state) const = 0;
 
-    // Retrieve tracks in a particular lifecycle state.
-    [[nodiscard]]
-    virtual std::vector<TrackId> getTrackIds(TrackState state) const = 0;
-
-    // All currently managed tracks.
-    [[nodiscard]]
-    virtual std::vector<TrackId> getTrackIds() const = 0;
+    // ALL TRACKS
+    [[nodiscard]] virtual std::vector<TrackId> getTrackIds() const = 0;
 
     //UPDATES TRACKS
     virtual void update(

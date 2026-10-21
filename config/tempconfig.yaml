@@ -60,9 +60,15 @@ visual_frontend:
 
   #TRACK MANAGEMENT
   track_maximum_observation: 30
+
   tentative_track_max_misses: 3
-  tentative_track_max_age: 5
+  tentative_track_max_age: 3
+
   active_track_max_misses: 3
+  active_track_max_age: 3
+
+  triangulated_track_max_misses: 3
+  triangulated_track_max_age: 3
 
   #MOTION GATING
 
