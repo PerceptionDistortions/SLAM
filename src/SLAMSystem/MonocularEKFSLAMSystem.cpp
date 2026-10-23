@@ -197,6 +197,10 @@ bool MonocularEKFSLAMSystem::update()
         return false;
     }
 
+    //PASS THE VISUAL FRONTEND DATA TO ESTIMATOR
+
+    //BACKEND OPTIMIZATION AND LOOP CLOSURE CHECK
+
     return true;
 }
 

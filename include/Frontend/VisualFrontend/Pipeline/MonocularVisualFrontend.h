@@ -39,9 +39,10 @@ public:
     void shutdown() override;
 
 private:
-    //FRAME ID COUNTER
+    //FRAME ID COUNTER, AND LANDMARK ID
     FrameId nextFrameId_{0};
     FrameId prevFrameId_{0};
+    LandmarkId nextLandmarkId_{0};
     
     // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR, Camera Id
     std::string cameraId_;
@@ -120,4 +121,11 @@ private:
 
     double minTriangulationReprojectionErrorPixels_{0.0};
     double maxTriangulationReprojectionErrorPixels_{3.0};
+
+    //VALIDATES A NEW FEATURE IN TRINAGULATED TRACK
+    bool matchTriangulatedFeatures(
+        const Eigen::Vector3d& pointWorld,
+        const FeatureObservation& observation,
+        const Eigen::Matrix4d& Tcw,
+        const Eigen::Matrix3d& K) const;
 };

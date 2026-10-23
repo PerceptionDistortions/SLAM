@@ -37,6 +37,13 @@ public:
 
     void trimObservationHistory(std::size_t maxObservations);
 
+    //TRIANGULATION TRACK UTILITY
+    // Stored triangulated 3D point in world coordinates
+    const std::optional<Eigen::Vector3d>&
+    getTriangulatedPointWorld() const noexcept override;
+    void setTriangulatedPointWorld(const Eigen::Vector3d& pointWorld) override;
+    void clearTriangulatedPointWorld() override;
+
 private:
     TrackId id_{0};
 
@@ -51,4 +58,6 @@ private:
 
     FrameId firstFrameId_{0};
     FrameId lastFrameId_{0};
+
+    std::optional<Eigen::Vector3d> triangulatedPointWorld_; //3D world point
 };

@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <vector>
+#include <Eigen/Core>
 
 #include "AliasesEnumsTypes/CommonAliases.h"
 #include "Frontend/VisualFrontend/FeatureTracks/FeatureObservation.h"
@@ -43,4 +44,13 @@ public:
     // Temporal bounds
     virtual FrameId getFirstFrameId() const noexcept = 0;
     virtual FrameId getLastFrameId() const noexcept = 0;
+
+    // Stored 3D position for a triangulated track (world coordinates).
+    virtual const std::optional<Eigen::Vector3d>&
+    getTriangulatedPointWorld() const noexcept = 0;
+
+    virtual void setTriangulatedPointWorld(
+        const Eigen::Vector3d& pointWorld) = 0;
+
+    virtual void clearTriangulatedPointWorld() = 0;
 };

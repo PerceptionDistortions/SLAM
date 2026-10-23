@@ -118,3 +118,20 @@ void MonocularFeatureTrack::trimObservationHistory(
                 std::vector<FeatureObservation>::difference_type>(
                     excess));
 }
+
+const std::optional<Eigen::Vector3d>&
+MonocularFeatureTrack::getTriangulatedPointWorld() const noexcept
+{
+    return triangulatedPointWorld_;
+}
+
+void MonocularFeatureTrack::setTriangulatedPointWorld(
+    const Eigen::Vector3d& point)
+{
+    triangulatedPointWorld_ = point;
+}
+
+void MonocularFeatureTrack::clearTriangulatedPointWorld()
+{
+    triangulatedPointWorld_.reset();
+}
