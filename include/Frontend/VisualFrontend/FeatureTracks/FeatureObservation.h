@@ -5,6 +5,10 @@
 
 #include "AliasesEnumsTypes/CommonAliases.h"
 
+//CAMERA ID
+//FRAME ID
+//FEATURE ID
+//PIXEL VALUES
 struct FeatureObservation
 {
     FrameId frameId{0};

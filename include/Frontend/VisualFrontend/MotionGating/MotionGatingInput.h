@@ -6,11 +6,10 @@
 
 struct MotionGatingInput
 {
-    // Number of candidate 2D-2D matches supplied to
-    // essential-matrix estimation.
+    // Number of candidate correspondences supplied to the selected estimator.
     int candidateMatchCount = 0;
 
-    // Number of RANSAC inliers for the essential matrix.
+    // Number of RANSAC inliers from the selected estimator.
     int ransacInlierCount = 0;
 
     // Number of correspondences surviving recoverPose().

@@ -50,7 +50,7 @@ bool MonocularVisualFrontend::init(){
 
 std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const VisualData& data){
 
-    //FRAME NULL CHECK, ASSIGN FRAME ID
+    //FRAME NULL CHECK, ASSIGN FRAME ID: CONVERT DATA INTO FRAME
     const MonocularFrame* frame = std::get_if<MonocularFrame>(&data);
     if (frame == nullptr)
     { 
@@ -60,7 +60,11 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     const FrameId currentFrameId = nextFrameId_++;
 
 
+
+
     //PREPROCESS IMAGE: UNDISTORT, GRAYSCALE, MOTION BLUR, EXPOSURE
+    //LIGHT EXPOSURE AND MOTION BLUR IMPLEMENTATION PENDING
+    //PROCESSED IMAGE WILL BE USED FROM HERE ON: UNDISTORTED
     cv::Mat processedImage;
     if (!preprocessImage(*frame, processedImage))
     {
@@ -69,21 +73,22 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     }
 
 
-    //DETECT COMPUTE (USE PREPROCESSED IMAGE): KEYPOINTS, DESCRIPTORS
+    
+
+    //DETECT COMPUTE: KEYPOINTS AND DESCRIPTORS (ORB)
     if(!detectCompute(processedImage, keypoints_, descriptors_))
     {
         std::cerr << "Feature detection and description failed."<< std::endl;
         return nullptr;
     }
 
-
-    //FIRST FRAME INIT: OBSERVATIONS, TRACK INIT, PREV FRAME
+    //FIRST FRAME INIT: PREV FRAME
+    //INIT TRACKS: OBSERVATIONS OF ALL FEATURE POINTS CREATED IN VECTOR AND STORED
+    //PREV FRAME DATA AND POSE
     if(!hasPrevFrame_)
     {
         const std::vector<FeatureObservation> currentObservations =
         createObservations(currentFrameId, cameraId_, keypoints_);
-
-        // Initialize tentative tracks for the first frame.
         trackManager_->update(currentObservations, {}, {});
 
         prevKeypoints_ = keypoints_;
@@ -98,6 +103,8 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
 
         return nullptr;
     }
+
+    
 
 
     //FEATURE MATCHING: STORE RESULT IN DMATCH
@@ -125,7 +132,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //COUNT LANDMARKS AND DECIDE BETWEEN ESSENTIAL MATRIC VS RANSAC
     //IF E: NO BASELINE CHECK WITH NORMALIZED ARBITRARY SCALE
     std::cout<<"Landmarks count: "<<mapManager_.getLandmarkCount()<<std::endl;// SELECT POSE ESTIMATION METHOD BASED ON MAP LANDMARK COUNT
-    const bool usePnP = mapManager_.getLandmarkCount() >= 6;
+    const bool usePnP = mapManager_.getLandmarkCount() >= 20;
 
 
     //DEFINE VARS REQUIRED FOR ESSENTIAL+RECOVER POSE
@@ -157,6 +164,10 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     {
         return nullptr;
     }
+    //CHALLENGES FACED
+    //1. PnP failed : enough landmarks still not enough correspondences
+    //2. Even with good number of correspondeces, pnp motion gating failed
+    //3. Zero triangulation candidates for pnp based iteration
 
 
     //PRINT FRAME POSE: OPTIONAL (FOR LOG)
@@ -166,8 +177,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //INITIAL TENTATIVE AND ACTIVE TRACKS UPDATE
     //masks should have dimensions predictable for indexing: RESHAPE METHOD
     cv::Mat finalMask = poseInlierMask.reshape(1, 1);
-    if (finalMask.type() != CV_8UC1 ||
-    finalMask.total() != validMatches.size())
+    if (finalMask.type() != CV_8UC1 ||finalMask.total() != validMatches.size())
     {
         std::cerr<< "Pose inlier mask does not match matches_."<< std::endl;
         return nullptr;
@@ -178,11 +188,8 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //2. Features points were not being added to triangulated and landmarks
 
 
-    //MOTION GATING: GEOMETRIC VERIFICATION: PNP AND ESSENTIAL MATRIX
-    //VALID FEATURES BASED ON CAMERA MOTION
-    //DOES NOT AFFECT FEATURES OR TRACKS
-    //ONLY DISCARDS FEATURES IF FAILS
-    // MOTION GATING
+    //MOTION GATING GEOMETRIC VERIFICATION: PNP AND ESSENTIAL MATRIX
+    //DOES NOT AFFECT FEATURES OR TRACKS, DISCARDS FRAME FROM FURTHER PROCESSING
     if (!evaluateMotionGating(
             validMatches,
             inlierMask,
@@ -195,6 +202,8 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     {
         return nullptr;
     }
+    //CHALLENGES FACED IN MOTION GATING
+    //1. Ratio in pnp was being checked wuith all descriptors instead of only landmark
 
 
     //PARALLAX AND BASELINE CHECKS FOR TRACKS
@@ -202,7 +211,6 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //MARK TRIANGULATION TRACKS
     const std::vector<TrackId> triangulationCandidates =parallaxBaselineCheck(currentFrameId, usePnP);
     std::cout << "Triangulation candidates: "<< triangulationCandidates.size() << std::endl;
-
     //CHALLENGES FACED IN PARALLEX AND BASELINE
     //1. Baseline not to be used without pnp, arbitrary and normalized scale
     //2. Parallax threshold relaxation brings better results
@@ -423,11 +431,11 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
                     track->clearTriangulatedPointWorld();
                     track->setState(TrackState::Landmark);
 
-                    std::cout
-                        << "[Triangulated -> Landmark] Track="
-                        << trackId
-                        << " Landmark=" << landmarkId
-                        << std::endl;
+                    // std::cout
+                    //     << "[Triangulated -> Landmark] Track="
+                    //     << trackId
+                    //     << " Landmark=" << landmarkId
+                    //     << std::endl;
                 }
             }
         }
@@ -570,15 +578,19 @@ bool MonocularVisualFrontend::estimateFramePose(
         std::vector<cv::Point2f> imagePoints;
         std::vector<std::size_t> pnpMatchIndices;
 
+        std::size_t invalidMatchIndices = 0;
+        std::size_t trackNotFound = 0;
+        std::size_t noLandmarkId = 0;
+        std::size_t landmarkNotFound = 0;
+        std::size_t invalidLandmark = 0;
+
         pnpMatchIndices.reserve(validMatches.size());
         objectPoints.reserve(validMatches.size());
         imagePoints.reserve(validMatches.size());
 
         const auto trackIds = trackManager_->getTrackIds();
 
-        for (std::size_t matchIndex = 0;
-             matchIndex < validMatches.size();
-             ++matchIndex)
+        for (std::size_t matchIndex = 0;matchIndex < validMatches.size();++matchIndex)
         {
             const auto& match = validMatches[matchIndex];
 
@@ -586,6 +598,8 @@ bool MonocularVisualFrontend::estimateFramePose(
                 match.queryIdx >= static_cast<int>(prevKeypoints_.size()) ||
                 match.trainIdx >= static_cast<int>(keypoints_.size()))
             {
+                std::cout<<"Invalid match indices."<<std::endl;
+                ++invalidMatchIndices;
                 continue;
             }
 
@@ -594,37 +608,45 @@ bool MonocularVisualFrontend::estimateFramePose(
             for (const TrackId trackId : trackIds)
             {
                 IFeatureTrack* track = trackManager_->getTrack(trackId);
-                if (track == nullptr)
-                    continue;
-
+                if (track == nullptr) continue;
                 const auto& observations = track->getObservations();
-
                 for (const auto& observation : observations)
                 {
                     if (observation.frameId == prevFrameId_ &&
-                        observation.featureId ==
-                            static_cast<FeatureId>(match.queryIdx) &&
+                        observation.featureId ==static_cast<FeatureId>(match.queryIdx) &&
                         observation.cameraId == cameraId_)
                     {
                         matchedTrack = track;
                         break;
                     }
                 }
-
-                if (matchedTrack != nullptr)
-                    break;
+                if (matchedTrack != nullptr) break;
             }
 
-            if (matchedTrack == nullptr)
+            if (matchedTrack == nullptr){
+                std::cout<<"Track not found."<<std::endl;
+                ++trackNotFound;
                 continue;
+            }
 
             const auto landmarkId = matchedTrack->getLandmarkId();
-            if (!landmarkId.has_value())
+            if (!landmarkId.has_value()){
+                ++noLandmarkId;
                 continue;
+            }
 
             const auto landmark = mapManager_.getLandmark(*landmarkId);
-            if (!landmark || !landmark->isValid())
+            if (!landmark)
+            {
+                ++landmarkNotFound;
                 continue;
+            }
+
+            if (!landmark->isValid())
+            {
+                ++invalidLandmark;
+                continue;
+            }
 
             const Eigen::Vector3d& position = landmark->getPosition();
 
@@ -636,6 +658,23 @@ bool MonocularVisualFrontend::estimateFramePose(
             imagePoints.push_back(keypoints_[match.trainIdx].pt);
             pnpMatchIndices.push_back(matchIndex);
         }
+
+        std::cerr
+        << "\n[PnP Debug] Correspondence collection"
+        << "\n  validMatches       = " << validMatches.size()
+        << "\n  totalTracks        = " << trackIds.size()
+        << "\n  previousKeypoints  = " << prevKeypoints_.size()
+        << "\n  currentKeypoints   = " << keypoints_.size()
+        << "\n  invalidMatchIndices= " << invalidMatchIndices
+        << "\n  trackNotFound      = " << trackNotFound
+        << "\n  noLandmarkId       = " << noLandmarkId
+        << "\n  landmarkNotFound   = " << landmarkNotFound
+        << "\n  invalidLandmark    = " << invalidLandmark
+        << "\n  objectPoints       = " << objectPoints.size()
+        << "\n  imagePoints        = " << imagePoints.size()
+        << "\n  pnpMatchIndices    = " << pnpMatchIndices.size()
+        << "\n  pnpRansacAvailable = " << (pnpRansac_ != nullptr)
+        << std::endl;
 
         if (!pnpRansac_ ||
             objectPoints.size() < 6 ||
@@ -680,14 +719,9 @@ bool MonocularVisualFrontend::estimateFramePose(
             t_CW.at<double>(1),
             t_CW.at<double>(2));
 
-        currFramePose_.worldFromCameraRotation =
-            R_world_camera.transpose();
-
-        currFramePose_.positionWorld =
-            -currFramePose_.worldFromCameraRotation * t_world_camera;
-
+        currFramePose_.worldFromCameraRotation =R_world_camera.transpose();
+        currFramePose_.positionWorld =-currFramePose_.worldFromCameraRotation * t_world_camera;
         currFramePose_.valid = true;
-
         inlierMask = cv::Mat::zeros(
             1,
             static_cast<int>(validMatches.size()),
@@ -949,11 +983,10 @@ MonocularVisualFrontend::parallaxBaselineCheck(
     FrameId currentFrameId,
     bool usePnP)
 {
+    //RETURN RESULT
     std::vector<TrackId> triangulationCandidates;
 
-    if (!prevFramePose_.valid ||
-        !currFramePose_.valid ||
-        !parallaxChecker_)
+    if (!prevFramePose_.valid ||!currFramePose_.valid ||!parallaxChecker_)
     {
         return triangulationCandidates;
     }

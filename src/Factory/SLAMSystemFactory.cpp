@@ -116,8 +116,6 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     //COMMON DEPENDENCIES: MAP AND SENSORS
     SLAMSystemDependencies dependencies = createDependencies(config,"config/system.yaml");
 
-
-
     //CAMERA CALIBRATION VALUES ARE REQUIRED IN FRONTEND
     const std::string& cameraName =config.system.monocular.camera;
     auto cameraSensor =dependencies.sensorManager->getSensor(cameraName);
@@ -125,7 +123,6 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
     const ICalibration* calibration =cameraSensor->getCalibration();
     const CameraCalibration* cameraCalibration =dynamic_cast<const CameraCalibration*>(calibration);
     if (!cameraCalibration) throw std::runtime_error("Sensor '" + cameraName +"' does not have CameraCalibration.");
-
 
 
     //VISUAL FRONTEND CONFIG
@@ -183,16 +180,11 @@ SLAMSystemFactory::createMonocular(const SystemConfig& config)
         if (motionBlurConfig.method == "laplacian")
         {
             motionBlurChecker =
-                std::make_unique<LaplacianBlurChecker>(
-                    motionBlurConfig.laplacianVariance.threshold
-                );
+                std::make_unique<LaplacianBlurChecker>(motionBlurConfig.laplacianVariance.threshold);
         }
         else
         {
-            throw std::runtime_error(
-                "Unsupported motion blur method: " +
-                motionBlurConfig.method
-            );
+            throw std::runtime_error("Unsupported motion blur method: " +motionBlurConfig.method);
         }
     }
     //LIGHT EXPOSURE CHECKER

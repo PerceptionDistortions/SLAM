@@ -4,11 +4,14 @@
 
 #include "Frontend/VisualFrontend/FeatureTracks/IFeatureTrack.h"
 
+//A SINGLE MONOCULAR TRACK REPRESENTATION
 class MonocularFeatureTrack final : public IFeatureTrack
 {
 public:
+    //CONSTRUCTOR
     explicit MonocularFeatureTrack(TrackId id,const FeatureObservation& initialObservation);
 
+    //GET THE TRACK ID
     TrackId getId() const noexcept override;
 
     //GET AND SET STATE: TENTATIVE, ACTIVE, ETC.
@@ -45,14 +48,18 @@ public:
     void clearTriangulatedPointWorld() override;
 
 private:
+    //TRACK AND LANDMARK ID
     TrackId id_{0};
-
-    TrackState state_{TrackState::Tentative};
-
-    std::vector<FeatureObservation> observations_;
-
     std::optional<LandmarkId> landmarkId_;
 
+    //TRACK STATE: PREV REQUIRED FOR LOST TRACKS
+    TrackState state_{TrackState::Tentative};
+    TrackState prevState{TrackState::Tentative};
+
+    //FEATURE OBS: CAMERA, FRAME, FEATURE, PIXEL
+    std::vector<FeatureObservation> observations_;
+
+    //CONSECUTIVE MATCHES AND MISSES
     int consecutiveInliers_{0};
     int consecutiveFailures_{0};
 

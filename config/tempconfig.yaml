@@ -19,37 +19,37 @@ system:
   #VISUALIZER
   visualizer: pangolin
 
-visual_frontend:
-  #PREPROCESSING
-  motion_blur: laplacian
+visual_frontend_core:
 
+  #PREPROCESSING ALGORITHMS
+  motion_blur: laplacian
   light_exposure: clahe
 
-  #orb, superpoint
+  #DETECTION AND DESCRIPTION
   detector_descriptor: orb
 
-  #ORB params
+  #ORB DETECTION DESCRIPTION
   orb_feature_count: 2000
   orb_scale_factor: 1.2
   orb_levels: 8
 
-  #bf, none
+  #FEATURE MATCHING
   feature_matcher: bf
 
-  #hamming, manhattan
+  #BF MATCHING DISTANCE
   bf_norm: hamming
 
-  #optical flow, none
-  feature_tracker: none
+  #FEATURE TRACKING
+  feature_tracker: none #OPTICAL FLOW
 
-  #descriptor matching and filtering
+  #DESCRIPTOR MATCHING AND FILTERING
   lowe_ratio: 0.7
   cross_check: mutual_best
   distance_filtering: fixed_distance
   
   #RANSAC
   recover_pose_distance_threshold: 1e6
-  minimum_landmark_pnp: 6
+  minimum_landmark_pnp: 20
 
   #PnP RANSAC
   pnp_iterations_count: 100;
@@ -58,7 +58,8 @@ visual_frontend:
   pnp_min_correspondence: 6
   pnp_refine_with_inliers: true
 
-  #TRACK MANAGEMENT
+visual_frontend_track_management:
+
   track_maximum_observation: 30
 
   tentative_track_max_misses: 3
@@ -71,6 +72,8 @@ visual_frontend:
   triangulated_track_max_age: 3
 
   #MOTION GATING
+  e_ransac_match_count: 30
+  pnp_ransac_count: 5
 
   #POSE ONLY REFINEMENT
   pose_only_refinement: ceres

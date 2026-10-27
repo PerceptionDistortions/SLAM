@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include<iostream>
 
 MonocularTrackManager::MonocularTrackManager(
     int maxConsecutiveFailures,
@@ -108,60 +109,66 @@ void MonocularTrackManager::update(
     const std::vector<cv::DMatch>& matches,
     const std::vector<std::uint8_t>& geometricInlierMask)
 {
+    //PROMOTE COUNT TENTATIVE->ACTIVE
+    //ADD THIS IN HEADER AND EXTRACT FROM CONFIGURATION LATER
     constexpr int kConsecutiveInliersToActivate = 2;
 
+    //COUNT OF TOTAL FEATURE OBSERVATIONS
     const std::size_t currentCount = currentObservations.size();
 
+    //VECTOR OF ALL TRACKS IN CURRENT FRAME
+    //DOES NOT ASSIGN ID: INIT TO 0, ASSIGN LATER
     currentFeatureTrackIds_.assign(currentCount, TrackId{0});
 
+    //HOW MANY OLD TRACKS WILL BE CONTINUED
+    //WE RESERVE THE SIZE TO NUMBER OF MATCHES: MAX POSSIBLE
     std::unordered_set<TrackId> continuedTracks;
     continuedTracks.reserve(matches.size());
 
+    //BOOLEAN: IS EACH FEATURE MAPPED TO A NEW OR EXISTING TRACK?
+    //COUNT=OBSERVATION COUNT
     std::vector<bool> currentAssigned(currentCount, false);
 
-    // Collect valid geometrically verified candidate matches.
+    // INDICES OF MATCHES THAT PASS GEOMETRIC VERIFICATION
     std::vector<std::size_t> candidateMatchIndices;
     candidateMatchIndices.reserve(matches.size());
 
+    //RUN LOOP ON ALL THE MATCHES: SKIPPED FOR FIRST FRAME AS NO MATCHES
+    //MATCHED FEATURES: PREV FEATURE IF HAS TRACK NEW ONE TOO HAS TRACK
+    //ADD IF ASSOCIATED WITH AN EXISTING TRACK
+    //NO NEW TRACK YET
+    //NO STATE UPDATE
     for (std::size_t i = 0; i < matches.size(); ++i)
     {
-        if (i >= geometricInlierMask.size() ||
-            geometricInlierMask[i] == 0)
-        {
-            continue;
-        }
+        //GEOMETRIC MASK CHECK NOT POSSIBLE, SKIP THIS MATCH CHECK
+        if (i >= geometricInlierMask.size() ||geometricInlierMask[i] == 0) continue;
 
+        //CACHE THE MATCH
         const cv::DMatch& match = matches[i];
+        
+        if (match.queryIdx < 0 || match.trainIdx < 0) continue;
 
-        if (match.queryIdx < 0 || match.trainIdx < 0)
-        {
-            continue;
-        }
+        //INDICES OF MATCHED FEATURES IN TWO FRAMES KEYPOINTS
+        const std::size_t previousIndex = static_cast<std::size_t>(match.queryIdx);
+        const std::size_t currentIndex = static_cast<std::size_t>(match.trainIdx);
 
-        const std::size_t previousIndex =
-            static_cast<std::size_t>(match.queryIdx);
-
-        const std::size_t currentIndex =
-            static_cast<std::size_t>(match.trainIdx);
-
+        //CHECK OF VALID INDICES
         if (previousIndex >= previousFeatureTrackIds_.size() ||
-            currentIndex >= currentCount)
-        {
-            continue;
-        }
+            currentIndex >= currentCount) continue;
 
-        const TrackId trackId =
-            previousFeatureTrackIds_[previousIndex];
+        //GET THE TRACK OF CURRENT FEATURE MATCH FROM PREV FRAME
+        const TrackId trackId = previousFeatureTrackIds_[previousIndex];
 
-        if (trackId == TrackId{0})
-        {
-            continue;
-        }
-
+        //IF NO TRACK ASSIGNED IN PREV FRAME, SKIP THE MATCH
+        std::cout<<"Feature track missing in previous frame."<<std::endl;
+        if (trackId == TrackId{0}) continue;
+        
         candidateMatchIndices.push_back(i);
     }
 
-    // Process the strongest descriptor matches first.
+    // SORT ALL THE MATCHES: STRONGEST TO WEAKEST
+    // SKIPPED FOR THE FIRST FRAME INIT
+    // MAKE SURE SAME FEATURE DOES NOT MATCH TO MULTIPLE TRACKS/FEATURES
     std::sort(
         candidateMatchIndices.begin(),
         candidateMatchIndices.end(),
@@ -175,36 +182,27 @@ void MonocularTrackManager::update(
     // - each existing track continues at most once per frame.
     for (const std::size_t matchIndex : candidateMatchIndices)
     {
+        //CACHE THE CURRENT MATCH AND TAKE PREV AND CURR INDICES
         const cv::DMatch& match = matches[matchIndex];
+        const std::size_t previousIndex =static_cast<std::size_t>(match.queryIdx);
+        const std::size_t currentIndex =static_cast<std::size_t>(match.trainIdx);
 
-        const std::size_t previousIndex =
-            static_cast<std::size_t>(match.queryIdx);
-
-        const std::size_t currentIndex =
-            static_cast<std::size_t>(match.trainIdx);
-
-        if (currentAssigned[currentIndex])
-        {
-            continue;
-        }
-
-        const TrackId trackId =
-            previousFeatureTrackIds_[previousIndex];
-
-        if (continuedTracks.find(trackId) != continuedTracks.end())
-        {
-            continue;
-        }
-
-        MonocularFeatureTrack* track =
-            getMonocularTrack(trackId);
+        //BOOLEAN DEFINE BEFORE: IS ASSIGNED TO A TRACK?
+        //IF ALREADY ASSIGNED SKIP
+        if (currentAssigned[currentIndex]) continue;
+        
+        //PREVIOUS FRAME TRACKS ARE ALREADY STORED, GET TRACK ID FOR CURR TRACK
+        //CONVERT TO MONOCULAR TRACK
+        const TrackId trackId = previousFeatureTrackIds_[previousIndex];
+        if (continuedTracks.find(trackId) != continuedTracks.end()) continue;
+        MonocularFeatureTrack* track = getMonocularTrack(trackId);
+        if(track==nullptr) continue;
 
         // Preserve existing Lost-state behavior.
-        if (track == nullptr ||
-            track->getState() == TrackState::Lost)
-        {
-            continue;
-        }
+        // if (track == nullptr ||track->getState() == TrackState::Lost)
+        // {
+        //     continue;
+        // }
 
         if (!appendObservation(
                 *track,

@@ -40,10 +40,21 @@ MotionGatingResult MonocularMotionGating::evaluate(
 {
     MotionGatingResult result;
 
+    // PnP operates on the smaller set of matches with valid 3D landmarks.
+    // Keep the stricter 2D-2D thresholds for essential-matrix estimation.
+    const int minCandidateMatches =
+        input.method == MotionEstimationType::PnP
+            ? 4
+            : config_.minCandidateMatches;
+    const int minRansacInliers =
+        input.method == MotionEstimationType::PnP
+            ? 4
+            : config_.minRansacInliers;
+
     // --------------------------------------------------
     // 1. COMMON VALIDATION: CANDIDATE MATCHES
     // --------------------------------------------------
-    if (input.candidateMatchCount < config_.minCandidateMatches)
+    if (input.candidateMatchCount < minCandidateMatches)
     {
         result.failure =
             MotionGatingFailure::InsufficientMatches;
@@ -60,7 +71,7 @@ MotionGatingResult MonocularMotionGating::evaluate(
         return result;
     }
 
-    if (input.ransacInlierCount < config_.minRansacInliers)
+    if (input.ransacInlierCount < minRansacInliers)
     {
         result.failure =
             MotionGatingFailure::InsufficientRansacInliers;

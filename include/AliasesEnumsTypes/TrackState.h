@@ -4,7 +4,8 @@ enum class TrackState
 {
     Tentative,
     Active,
-    Lost,
     Triangulated,
-    Landmark
+    Landmark,
+    Triangulated_Lost,
+    Landmark_Lost
 };

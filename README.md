@@ -462,3 +462,38 @@ Current implemented capabilities:
 - **Architecture Reporting** — generates a validation report showing component status, failures, and warnings.
 
 The current implementation focuses on deterministic architecture validation. The broader SLAM research, trajectory analysis, experiment management, and LLM-based reasoning capabilities are part of the intended future direction.
+
+
+Visual Track Management
+1. Tentative Track
+    Age stored and increased with each frame.
+    If age limit crossed without promoting or demoting without consecutive misses, pruned.
+    If consecutive misses limit crossed, deleted track.
+    If consecutive matches as defined, promotes to active track.
+2. Active Track
+    Age stored and increased with each frame.
+    If age limit crossed without promoting or demoting without consecutive misses, pruned.
+    If consecutive misses limit crossed, demoted to tentative.
+    If consecutive matches as defined and passes parallax and baseline test, triangulation is attempted and if success and validated, it is promoted to a triangulated track.
+3. Triangulated track
+    No age based pruning.
+    consective failures, marked as triagnulated_lost state.
+    If passes the multi frame matching and validation and reprojection tests, should be promoted to landmkark.
+    Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+4. Triangulated_lost
+    No age stored: only consecutive matches or misses
+    If consecutuce macthes: promoted back to triangulated.
+    If consecutive misses: deleted (not demoetd to active).
+    Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+5. Landmark
+    Age is not stored and so no pruning.
+    Consecutive misses: demote to landmark lost.
+    Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+6. Landmark_lost
+    No age stored
+    Consecutive misses: delete
+    Consecitve matches: promote back to landmark.
+     Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+
+    
+    
