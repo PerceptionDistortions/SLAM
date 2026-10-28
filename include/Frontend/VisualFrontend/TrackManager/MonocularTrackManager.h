@@ -12,12 +12,13 @@
 #include "AliasesEnumsTypes/TrackState.h"
 #include "Frontend/VisualFrontend/TrackManager/ITrackManager.h"
 #include "Frontend/VisualFrontend/FeatureTracks/MonocularFeatureTrack.h"
+#include"Configuration/NewConfigs/VisualTrackConfig.h"
 
 class MonocularTrackManager final : public ITrackManager
 {
 public:
     //CONSTRUCTOR
-    explicit MonocularTrackManager(int maxConsecutiveFailures = 2,std::size_t maxObservationHistory = 30);
+    explicit MonocularTrackManager(VisualTrackConfig& config);
 
     //DESTRUCTOR
     ~MonocularTrackManager() override = default;
@@ -42,6 +43,13 @@ public:
 
     //MAP MANAGER ACCEPTS AND REGISTERS A NEW LANDMARK
     bool associateLandmark(TrackId trackId,LandmarkId landmarkId);
+
+    //LOST TRACKS HANDLING
+    bool markTriangulatedLost(TrackId trackId);
+    bool recoverTriangulatedLost(TrackId trackId);
+
+    bool markLandmarkLost(TrackId trackId);
+    bool recoverLandmarkLost(TrackId trackId);
     
     //REMOVE TRACKS THAT HAVE PASSED A CERTAIN AGE BUT STILL NOT USEFUL
     //APPLIES TO ALL 4 STATES (FROM LOST STATES IN TRIAN AND LANDMARK)
@@ -61,9 +69,6 @@ public:
     [[nodiscard]] std::vector<TrackId> getTrackIds(TrackState state) const override;
     [[nodiscard]] std::vector<TrackId> getTrackIds() const override;
 
-    // Mark a track as lost when appropriate.
-    bool markLost(TrackId trackId);
-
     void reset() override;
 
 private:
@@ -72,26 +77,43 @@ private:
 
     TrackId nextTrackId_{1};
 
-    // This manager owns tracks, never Landmark objects.
+    // TRACK OWNING, NO LANDMARK OWNING: ID TO TRACK MAP
     std::unordered_map<TrackId,std::unique_ptr<MonocularFeatureTrack>> tracks_;
 
     // Previous frame observations used for temporal matching.
     std::vector<FeatureObservation> previousObservations_;
 
 private:
-    //FEATURE TRACK IDs: TRACK ID OF FEATURES AS INDEX IN KEYPOINTS
-    //FEATURE AT INDEX n in KEYPOINT: TRACK CAN BE FETCHED HERE
+    //TRACK ID OF FEATURES IN PREV AND CURR FRAME
+    //INDEX OF FEATURES MATCH HERE AND IN KEYPOINTS
     std::vector<TrackId> previousFeatureTrackIds_;
     std::vector<TrackId> currentFeatureTrackIds_;
 
 private:
-    std::size_t maxObservationHistory_;
-
     //TENTATIVE LIFE CYCLE: FROM CONFIG
     int tentative_max_misses{2};
-    int tentative_max_age;
+    int tentative_max_matches{2};
+    int tentative_max_age{20}; //same as max observation
 
     //ACTICE LIFE CYCLE: FROM CONFIG
-    int active_max_misses;
-    int active_max_age;
+    int active_max_misses{2};
+    int active_max_matches{2};
+    int active_max_age{20}; //same as max observation
+
+    //TRIANGULATED TRACK
+    int triangulated_max_observation{20};
+    int triangulated_max_miss{3};
+    int triangulated_max_matches{2};
+
+    //TRIANGULATED LOST TRACK
+    int triangulated_lost_max_miss{3};
+    int triangulated_lost_max_matches{2};
+
+    //LANDMARKS
+    int landmark_max_observation{20};
+    int landmark_max_miss{3};
+
+    //LANDMARKS LOST
+    int landmark_lost_max_miss{3};
+    int landmark_lost_max_matches{2};
 };

@@ -59,8 +59,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     }
     const FrameId currentFrameId = nextFrameId_++;
 
-
-
+    //--------------------------------------------------------------------
 
     //PREPROCESS IMAGE: UNDISTORT, GRAYSCALE, MOTION BLUR, EXPOSURE
     //LIGHT EXPOSURE AND MOTION BLUR IMPLEMENTATION PENDING
@@ -72,8 +71,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         return nullptr;
     }
 
-
-    
+    //--------------------------------------------------------------------
 
     //DETECT COMPUTE: KEYPOINTS AND DESCRIPTORS (ORB)
     if(!detectCompute(processedImage, keypoints_, descriptors_))
@@ -81,6 +79,8 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         std::cerr << "Feature detection and description failed."<< std::endl;
         return nullptr;
     }
+
+    //-------------------------------------------------------------------
 
     //FIRST FRAME INIT: PREV FRAME
     //INIT TRACKS: OBSERVATIONS OF ALL FEATURE POINTS CREATED IN VECTOR AND STORED

@@ -7,15 +7,41 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include<iostream>
+#include <iostream>
 
-MonocularTrackManager::MonocularTrackManager(
-    int maxConsecutiveFailures,
-    std::size_t maxObservationHistory)
-    : maxConsecutiveFailures_(
-          std::max(1, maxConsecutiveFailures)),
-      maxObservationHistory_(
-          std::max<std::size_t>(2, maxObservationHistory))
+#include <algorithm>
+
+//CONSTRUCTOR TAKES CONFIGURATION DATA ASSIGNS THEM
+MonocularTrackManager::MonocularTrackManager(VisualTrackConfig& config)
+    : tentative_max_misses(std::max(1, config.tentative_max_misses)),
+      tentative_max_matches(std::max(1, config.tentative_max_match)),
+      tentative_max_age(std::max(1, config.tentative_max_age)),
+
+      active_max_misses(std::max(1, config.active_max_misses)),
+      active_max_matches(std::max(1, config.active_max_matches)),
+      active_max_age(std::max(1, config.active_max_age)),
+
+      triangulated_max_observation(
+          std::max(2, config.triangulated_max_observations)),
+      triangulated_max_miss(
+          std::max(1, config.triangulated_max_misses)),
+      triangulated_max_matches(
+          std::max(1, config.triangulated_max_matches)),
+
+      triangulated_lost_max_miss(
+          std::max(1, config.triangulated_lost_max_miss)),
+      triangulated_lost_max_matches(
+          std::max(1, config.triangulated_lost_max_match)),
+
+      landmark_max_observation(
+          std::max(2, config.landmark_max_observations)),
+      landmark_max_miss(
+          std::max(1, config.landmark_max_misses)),
+
+      landmark_lost_max_miss(
+          std::max(1, config.landmark_lost_max_misses)),
+      landmark_lost_max_matches(
+          std::max(1, config.landmark_lost_max_matches))
 {
 }
 
@@ -97,47 +123,44 @@ TrackId MonocularTrackManager::createTrack(const FeatureObservation& observation
 bool MonocularTrackManager::appendObservation(MonocularFeatureTrack& track,
     const FeatureObservation& observation)
 {
-    if (track.getState() == TrackState::Lost) return false;
     if (!track.addObservation(observation)) return false;
-    track.trimObservationHistory(maxObservationHistory_);
+    track.trimObservationHistory();
     return true;
 }
 
-
+//ASSOCIATE TO EXISTING TRACKS BASED ON MATCH STRENGTH
+//CREATE NEW TENTATIVE TRACKS
+//PROMOTE FROM TENTAIVE TO ACTIVE
+//CAN DEMOTE AND DELETE ALL TYPES OF TRACKS IF NO MATCHES AND COUNT EXCEED
+//DOES NOT PROMOTE OR DEMOTE TRIANGULATED AND LANDMARKS
 void MonocularTrackManager::update(
-    const std::vector<FeatureObservation>& currentObservations,
-    const std::vector<cv::DMatch>& matches,
+    const std::vector<FeatureObservation>& currentObservations, //all feature obs
+    const std::vector<cv::DMatch>& matches, //all success match between frames
     const std::vector<std::uint8_t>& geometricInlierMask)
 {
-    //PROMOTE COUNT TENTATIVE->ACTIVE
-    //ADD THIS IN HEADER AND EXTRACT FROM CONFIGURATION LATER
-    constexpr int kConsecutiveInliersToActivate = 2;
-
     //COUNT OF TOTAL FEATURE OBSERVATIONS
     const std::size_t currentCount = currentObservations.size();
 
-    //VECTOR OF ALL TRACKS IN CURRENT FRAME
-    //DOES NOT ASSIGN ID: INIT TO 0, ASSIGN LATER
+    //FOR ALL OBSERVATIONS, INIT SIZE OF TRACK IDs VECTOR
     currentFeatureTrackIds_.assign(currentCount, TrackId{0});
 
-    //HOW MANY OLD TRACKS WILL BE CONTINUED
+    //HOW MANY OLD TRACKS WILL BE CONTINUED (CAN BE LESS TOO)
     //WE RESERVE THE SIZE TO NUMBER OF MATCHES: MAX POSSIBLE
+    //ADDED WHEN ASSOCIATED TO AN EXISTING TRACK
     std::unordered_set<TrackId> continuedTracks;
     continuedTracks.reserve(matches.size());
 
-    //BOOLEAN: IS EACH FEATURE MAPPED TO A NEW OR EXISTING TRACK?
-    //COUNT=OBSERVATION COUNT
+    //BOOLEAN: IS EACH FEATURE MAPPED TO A NEW OR EXISTING TRACK?: OBS COUNT
     std::vector<bool> currentAssigned(currentCount, false);
 
     // INDICES OF MATCHES THAT PASS GEOMETRIC VERIFICATION
     std::vector<std::size_t> candidateMatchIndices;
     candidateMatchIndices.reserve(matches.size());
 
-    //RUN LOOP ON ALL THE MATCHES: SKIPPED FOR FIRST FRAME AS NO MATCHES
-    //MATCHED FEATURES: PREV FEATURE IF HAS TRACK NEW ONE TOO HAS TRACK
-    //ADD IF ASSOCIATED WITH AN EXISTING TRACK
-    //NO NEW TRACK YET
-    //NO STATE UPDATE
+    
+    //TRACK ASSOCIATION CANDIDATES ONLY: NO NEW TRACK, NO STATE UPDATE, NO ASSIGNMENT
+    //MULTIPLE COMMON MATCHES POSSIBLE
+    //LOOP ON MATCHES: NOT FOR FIRST FRAME INIT
     for (std::size_t i = 0; i < matches.size(); ++i)
     {
         //GEOMETRIC MASK CHECK NOT POSSIBLE, SKIP THIS MATCH CHECK
@@ -146,13 +169,14 @@ void MonocularTrackManager::update(
         //CACHE THE MATCH
         const cv::DMatch& match = matches[i];
         
+        //INVALID MATCHING QUERIES
         if (match.queryIdx < 0 || match.trainIdx < 0) continue;
 
         //INDICES OF MATCHED FEATURES IN TWO FRAMES KEYPOINTS
         const std::size_t previousIndex = static_cast<std::size_t>(match.queryIdx);
         const std::size_t currentIndex = static_cast<std::size_t>(match.trainIdx);
 
-        //CHECK OF VALID INDICES
+        //INDICES VALIDATION
         if (previousIndex >= previousFeatureTrackIds_.size() ||
             currentIndex >= currentCount) continue;
 
@@ -166,8 +190,7 @@ void MonocularTrackManager::update(
         candidateMatchIndices.push_back(i);
     }
 
-    // SORT ALL THE MATCHES: STRONGEST TO WEAKEST
-    // SKIPPED FOR THE FIRST FRAME INIT
+    // SORT MATCHES STRONGEST TO WEAKEST, SKIP FOR FIRST FRAME
     // MAKE SURE SAME FEATURE DOES NOT MATCH TO MULTIPLE TRACKS/FEATURES
     std::sort(
         candidateMatchIndices.begin(),
@@ -177,9 +200,9 @@ void MonocularTrackManager::update(
             return matches[lhs].distance < matches[rhs].distance;
         });
 
-    // Assign verified matches one-to-one:
-    // - each current feature receives at most one track;
-    // - each existing track continues at most once per frame.
+    //ASSOCIATE WITH EXISTING TRACKS FROM PREV FRAME: ONE TO ONE BEST MATCH
+    //INCREMENT CONSECUTIVE COUNTER IN TRACK
+    //PROMOTES A TENTAIVE TRACK ONLY
     for (const std::size_t matchIndex : candidateMatchIndices)
     {
         //CACHE THE CURRENT MATCH AND TAKE PREV AND CURR INDICES
@@ -187,68 +210,103 @@ void MonocularTrackManager::update(
         const std::size_t previousIndex =static_cast<std::size_t>(match.queryIdx);
         const std::size_t currentIndex =static_cast<std::size_t>(match.trainIdx);
 
-        //BOOLEAN DEFINE BEFORE: IS ASSIGNED TO A TRACK?
-        //IF ALREADY ASSIGNED SKIP
+        //ONE FEATURE WILL BE USED ONLY ONCE
         if (currentAssigned[currentIndex]) continue;
         
-        //PREVIOUS FRAME TRACKS ARE ALREADY STORED, GET TRACK ID FOR CURR TRACK
-        //CONVERT TO MONOCULAR TRACK
-        const TrackId trackId = previousFeatureTrackIds_[previousIndex];
-        if (continuedTracks.find(trackId) != continuedTracks.end()) continue;
-        MonocularFeatureTrack* track = getMonocularTrack(trackId);
+        //ONE TRACK WILL BE USED ONLY ONCE
+        const TrackId trackId = previousFeatureTrackIds_[previousIndex]; //gte prev track from prev frame
+        if (continuedTracks.find(trackId) != continuedTracks.end()) continue; //if already used skip it and skip frame
+        MonocularFeatureTrack* track = getMonocularTrack(trackId); //get track object from the id
         if(track==nullptr) continue;
 
-        // Preserve existing Lost-state behavior.
-        // if (track == nullptr ||track->getState() == TrackState::Lost)
-        // {
-        //     continue;
-        // }
+        if (!appendObservation(*track,currentObservations[currentIndex])) continue;
+        track->incrementTrackAge();
 
-        if (!appendObservation(
-                *track,
-                currentObservations[currentIndex]))
-        {
-            continue;
-        }
-
-        track->setConsecutiveInliers(
-            track->getConsecutiveInliers() + 1);
-
+        //IF FOUND, FAILURE COUNTER RESETS
+        track->setConsecutiveInliers(track->getConsecutiveInliers() + 1);
         track->setConsecutiveFailures(0);
 
-        // Promote after two consecutive successful continuations.
-        if (track->getState() == TrackState::Tentative &&
-            track->getConsecutiveInliers() >=
-                kConsecutiveInliersToActivate)
-        {
-            track->setState(TrackState::Active);
-        }
+        // PROMOTE THE TENTATIVE TRACK
+        if (track->getState() == TrackState::Tentative && track->getConsecutiveInliers() >=
+                tentative_max_matches) track->setState(TrackState::Active);
 
         currentFeatureTrackIds_[currentIndex] = trackId;
         currentAssigned[currentIndex] = true;
         continuedTracks.insert(trackId);
     }
 
-    // Update misses and preserve the existing deletion policy.
+    // EXISTING TRACKS MISSED: UPDATE COUNTERS: CHECK IN MAP OF EXISTING TRACKS
     for (auto it = tracks_.begin(); it != tracks_.end();)
     {
+        //CACHE ID AND TRACKS
         const TrackId trackId = it->first;
         MonocularFeatureTrack& track = *it->second;
 
+        //IF MATCHES FOUND IN CURRENT THEN SKIP
         if (continuedTracks.find(trackId) != continuedTracks.end())
         {
             ++it;
             continue;
         }
 
+        
+        //TRACK WAS NOT FOUND AND SO THE COUNTER IS RESET
+        //FAILURES INCREMENTED
+        track.incrementTrackAge(); //increase age, relevant for tentative and active only
         track.setConsecutiveInliers(0);
-
-        const int failures =
-            track.getConsecutiveFailures() + 1;
-
+        const int failures = track.getConsecutiveFailures() + 1;
         track.setConsecutiveFailures(failures);
 
-        if (failures >= maxConsecutiveFailures_)
+        
+        int maxMisses = 0;
+        
+        //DELETE THE TENTATIVE TRACK
+        //DEMOTE THE ACTIVE TRACK
+        //DELETE THE TRIANGULATED LOST TRACK
+        //DEMOTE THE TRINAGULATE TO LOST
+        //DELETE THE TRINAGULATED LOST
+        //DEMOTE THE LANDMARK TO LOST
+        //DELETE THE LANDMARK LOST, TRIGGER LANDMARK DELETION IN MAP MANAGER
+        bool eraseTrack = false;
+
+        switch (track.getState())
+        {
+            case TrackState::Tentative:
+                eraseTrack = failures >= tentative_max_misses ||
+                track.getTrackAge() >= tentative_max_age;
+                break;
+
+            case TrackState::Active:
+                eraseTrack = failures >= active_max_misses ||
+                track.getTrackAge() >= active_max_age;
+                break;
+
+            case TrackState::Triangulated:
+                if (failures >= triangulated_max_miss)
+                {
+                    track.setState(TrackState::Triangulated_Lost);
+                    track.setConsecutiveFailures(0);
+                }
+                break;
+
+            case TrackState::Triangulated_Lost:
+                eraseTrack = failures >= triangulated_lost_max_miss;
+                break;
+
+            case TrackState::Landmark:
+                if (failures >= landmark_max_miss)
+                {
+                    track.setState(TrackState::Landmark_Lost);
+                    track.setConsecutiveFailures(0);
+                }
+                break;
+
+            case TrackState::Landmark_Lost:
+                eraseTrack = failures >= landmark_lost_max_miss;
+                break;
+        }
+
+        if (eraseTrack)
         {
             it = tracks_.erase(it);
         }
@@ -258,21 +316,19 @@ void MonocularTrackManager::update(
         }
     }
 
-    // Create tentative tracks for unassigned current features.
+    // NEW TENTATIVE TRACKS: CHECK WHICH ARE NOT ASSSIGNED
     for (std::size_t i = 0; i < currentCount; ++i)
     {
-        if (currentAssigned[i])
-        {
-            continue;
-        }
-
-        currentFeatureTrackIds_[i] =
-            createTrack(currentObservations[i]);
+        if (currentAssigned[i]) continue;
+        currentFeatureTrackIds_[i] = createTrack(currentObservations[i]);
     }
 
     // Preserve feature-index alignment for the next frame.
     previousFeatureTrackIds_ = currentFeatureTrackIds_;
     previousObservations_ = currentObservations;
+
+    //REMOVE UNSTABLE TENTATIVE AND ACTIVE TRACKS
+    prune();
 }
 
 bool MonocularTrackManager::markTriangulated(TrackId trackId)
@@ -280,7 +336,8 @@ bool MonocularTrackManager::markTriangulated(TrackId trackId)
     MonocularFeatureTrack* track = getMonocularTrack(trackId);
 
     if (track == nullptr ||
-        track->getState() == TrackState::Lost ||
+        track->getState() == TrackState::Triangulated_Lost ||
+        track->getState() == TrackState::Landmark_Lost ||
         track->getObservations().size() < 2)
     {
         return false;
@@ -298,7 +355,8 @@ bool MonocularTrackManager::associateLandmark(
     MonocularFeatureTrack* track = getMonocularTrack(trackId);
 
     if (track == nullptr ||
-        track->getState() == TrackState::Lost ||
+        track->getState() == TrackState::Triangulated_Lost ||
+        track->getState() == TrackState::Landmark_Lost ||
         track->getLandmarkId().has_value())
     {
         return false;
@@ -309,26 +367,32 @@ bool MonocularTrackManager::associateLandmark(
     return true;
 }
 
-bool MonocularTrackManager::markLost(TrackId trackId)
-{
-    MonocularFeatureTrack* track = getMonocularTrack(trackId);
 
-    if (track == nullptr)
-    {
-        return false;
-    }
-
-    track->setState(TrackState::Lost);
-
-    return true;
-}
-
+//TRACKS THAT HAV NOT BEEN PROMOTED OR DEMOTED OR STABLE FOR A LONG TIME
+//APPLIES TO TENTATIVE AND ACTIVE TRACKS
+// PRUNE ONLY TENTATIVE AND ACTIVE TRACKS THAT EXCEED THEIR AGE LIMIT
 void MonocularTrackManager::prune()
 {
     for (auto it = tracks_.begin(); it != tracks_.end();)
     {
-        if (it->second &&
-            it->second->getState() == TrackState::Lost)
+        if (!it->second)
+        {
+            ++it;
+            continue;
+        }
+
+        const TrackState state = it->second->getState();
+        const int age = it->second->getTrackAge();
+
+        const bool pruneTentative =
+            state == TrackState::Tentative &&
+            age >= tentative_max_age;
+
+        const bool pruneActive =
+            state == TrackState::Active &&
+            age >= active_max_age;
+
+        if (pruneTentative || pruneActive)
         {
             it = tracks_.erase(it);
         }
@@ -337,9 +401,6 @@ void MonocularTrackManager::prune()
             ++it;
         }
     }
-
-    // Keep the index-aligned vectors unchanged. Any stale IDs
-    // are ignored by getTrack() when processing the next frame.
 }
 
 void MonocularTrackManager::reset()
@@ -351,4 +412,73 @@ void MonocularTrackManager::reset()
     previousObservations_.clear();
 
     nextTrackId_ = 1;
+}
+
+//LOST TRACKS HANDLING
+bool MonocularTrackManager::markTriangulatedLost(TrackId trackId)
+{
+    MonocularFeatureTrack* track = getMonocularTrack(trackId);
+
+    if (track == nullptr ||
+        track->getState() != TrackState::Triangulated)
+    {
+        return false;
+    }
+
+    track->setState(TrackState::Triangulated_Lost);
+    track->setConsecutiveInliers(0);
+    track->setConsecutiveFailures(0);
+
+    return true;
+}
+
+bool MonocularTrackManager::recoverTriangulatedLost(TrackId trackId)
+{
+    MonocularFeatureTrack* track = getMonocularTrack(trackId);
+
+    if (track == nullptr ||
+        track->getState() != TrackState::Triangulated_Lost)
+    {
+        return false;
+    }
+
+    track->setState(TrackState::Triangulated);
+    track->setConsecutiveInliers(0);
+    track->setConsecutiveFailures(0);
+
+    return true;
+}
+
+bool MonocularTrackManager::markLandmarkLost(TrackId trackId)
+{
+    MonocularFeatureTrack* track = getMonocularTrack(trackId);
+
+    if (track == nullptr ||
+        track->getState() != TrackState::Landmark)
+    {
+        return false;
+    }
+
+    track->setState(TrackState::Landmark_Lost);
+    track->setConsecutiveInliers(0);
+    track->setConsecutiveFailures(0);
+
+    return true;
+}
+
+bool MonocularTrackManager::recoverLandmarkLost(TrackId trackId)
+{
+    MonocularFeatureTrack* track = getMonocularTrack(trackId);
+
+    if (track == nullptr ||
+        track->getState() != TrackState::Landmark_Lost)
+    {
+        return false;
+    }
+
+    track->setState(TrackState::Landmark);
+    track->setConsecutiveInliers(0);
+    track->setConsecutiveFailures(0);
+
+    return true;
 }

@@ -36,30 +36,23 @@ MonocularFeatureTrack::getObservations() const noexcept
     return observations_;
 }
 
-bool MonocularFeatureTrack::addObservation(
-    const FeatureObservation& observation)
+//IF A FEATURE IS MACTCHED IN A TRACK, ADD AN OBSERVATION
+bool MonocularFeatureTrack::addObservation(const FeatureObservation& observation)
 {
-    // Do not accept duplicate or out-of-order frame observations.
-    if (!observations_.empty() &&
-        observation.frameId <= lastFrameId_)
-    {
-        return false;
-    }
+    // Reject duplicate or out-of-order frame observations.
+    if (!observations_.empty() && observation.frameId <= observations_.back().frameId) return false;
 
-    observations_.push_back(observation);
-    lastFrameId_ = observation.frameId;
-
+    observations_.push_back(observation); // Append the new observation.
     return true;
 }
 
-std::optional<LandmarkId>
-MonocularFeatureTrack::getLandmarkId() const noexcept
+
+std::optional<LandmarkId>MonocularFeatureTrack::getLandmarkId() const noexcept
 {
     return landmarkId_;
 }
 
-void MonocularFeatureTrack::setLandmarkId(
-    LandmarkId landmarkId)
+void MonocularFeatureTrack::setLandmarkId(LandmarkId landmarkId)
 {
     landmarkId_ = landmarkId;
 }
@@ -96,17 +89,31 @@ FrameId MonocularFeatureTrack::getFirstFrameId() const noexcept
 
 FrameId MonocularFeatureTrack::getLastFrameId() const noexcept
 {
-    return lastFrameId_;
+    return prevFrameId_;
 }
 
-void MonocularFeatureTrack::trimObservationHistory(
-    std::size_t maxObservations)
+
+void MonocularFeatureTrack::trimObservationHistory()
 {
-    if (maxObservations == 0 ||
-        observations_.size() <= maxObservations)
+    std::size_t maxObservations = 0;
+
+    switch (state_)
     {
-        return;
+        case TrackState::Triangulated:
+            maxObservations = 20;
+            break;
+
+        case TrackState::Landmark:
+            maxObservations = 20;
+            break;
+
+        default:
+            // Tentative and active tracks are managed by max age.
+            return;
     }
+
+    if (observations_.size() <= maxObservations)
+        return;
 
     const std::size_t excess =
         observations_.size() - maxObservations;
@@ -118,6 +125,7 @@ void MonocularFeatureTrack::trimObservationHistory(
                 std::vector<FeatureObservation>::difference_type>(
                     excess));
 }
+
 
 const std::optional<Eigen::Vector3d>&
 MonocularFeatureTrack::getTriangulatedPointWorld() const noexcept
@@ -134,4 +142,20 @@ void MonocularFeatureTrack::setTriangulatedPointWorld(
 void MonocularFeatureTrack::clearTriangulatedPointWorld()
 {
     triangulatedPointWorld_.reset();
+}
+
+//AGE HANDLING
+int MonocularFeatureTrack::getTrackAge() const noexcept
+{
+    return track_age;
+}
+
+void MonocularFeatureTrack::incrementTrackAge() noexcept
+{
+    ++track_age;
+}
+
+void MonocularFeatureTrack::resetTrackAge() noexcept
+{
+    track_age = 0;
 }

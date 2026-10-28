@@ -38,7 +38,7 @@ public:
     FrameId getFirstFrameId() const noexcept override;
     FrameId getLastFrameId() const noexcept override;
 
-    void trimObservationHistory(std::size_t maxObservations);
+    void trimObservationHistory();
 
     //TRIANGULATION TRACK UTILITY
     // Stored triangulated 3D point in world coordinates
@@ -47,24 +47,34 @@ public:
     void setTriangulatedPointWorld(const Eigen::Vector3d& pointWorld) override;
     void clearTriangulatedPointWorld() override;
 
+public:
+    //AGE HANDLING
+    int getTrackAge() const noexcept;
+    void incrementTrackAge() noexcept;
+    void resetTrackAge() noexcept;
+
 private:
     //TRACK AND LANDMARK ID
     TrackId id_{0};
     std::optional<LandmarkId> landmarkId_;
 
-    //TRACK STATE: PREV REQUIRED FOR LOST TRACKS
+    //TRACK STATE
     TrackState state_{TrackState::Tentative};
-    TrackState prevState{TrackState::Tentative};
 
-    //FEATURE OBS: CAMERA, FRAME, FEATURE, PIXEL
+    //ALL FEATURE OBSERVATIONS: CAMERA, FRAME, FEATURE, PIXEL
+    //MAX COUNT WILL DEPEND ON CONFIGURATION
     std::vector<FeatureObservation> observations_;
 
     //CONSECUTIVE MATCHES AND MISSES
     int consecutiveInliers_{0};
     int consecutiveFailures_{0};
+    int track_age{0};
 
+    //IMPORTANT FRAMES IDs WITH THIS TRACK
     FrameId firstFrameId_{0};
-    FrameId lastFrameId_{0};
+    FrameId prevFrameId_{0};
+    FrameId currentFrameId{0};
 
+    //IF TRIANGULATED, STORE 3D POINTS
     std::optional<Eigen::Vector3d> triangulatedPointWorld_; //3D world point
 };

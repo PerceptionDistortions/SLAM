@@ -39,20 +39,17 @@ public:
     void shutdown() override;
 
 private:
-    //FRAME ID AND LANDMARK ID COUNTERS
+    //FRAME ID COUNTER
     FrameId nextFrameId_{0};
-    FrameId prevFrameId_{0}; //Used to compare with current frame
-    LandmarkId nextLandmarkId_{0};
+    FrameId prevFrameId_{0};
     
-    //FRONTEND CONFIGURATION TAKEN FROM FACTORY
-    const FrontendConfig& config_;
-
-    // CAMERA CALIBRATION DATA, CAMERA ID (PASSED IN CONSTRUCTOR)
+    // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR, Camera Id
     std::string cameraId_;
+    const FrontendConfig& config_;
     CameraCalibration cameraCalibration_;
     cv::Mat cameraMatrix_;
     cv::Mat distCoeffs_;
-    void initializeCalibration(); //determines cam matrix and 
+    void initializeCalibration();
     
     //PREVIOUS FRAME DATA
     std::vector<cv::KeyPoint> prevKeypoints_;
@@ -65,26 +62,16 @@ private:
     cv::Mat descriptors_;
     std::vector<cv::DMatch> matches_; //MATCH WITH PREVIOUS FRAME
     CameraPose currFramePose_;
+    
+    //PREPROCESSING, PROCESSING
+    bool preprocessImage(const MonocularFrame& frame,cv::Mat& processedImage);
 
     //PARALLAX AND BASELINE CHECKS
     std::unique_ptr<IParallaxChecker> parallaxChecker_;
     std::unique_ptr<IBaselineChecker> baselineChecker_;
 
-    //TRIANGULATION ERROR PARAMS
-    double minTriangulationReprojectionErrorPixels_{0.0};
-    double maxTriangulationReprojectionErrorPixels_{3.0};
-
 private:
-    //PREPROCESSING, PROCESSING
-    bool preprocessImage(const MonocularFrame& frame,cv::Mat& processedImage);
-
-    //PIXEL MATCHING BETWEEN 2 FRAMES
-    void buildValidCorrespondences(
-        std::vector<cv::Point2f>& points1,
-        std::vector<cv::Point2f>& points2,
-        std::vector<cv::DMatch>& validMatches);
-
-    //E+RECOVER POSE OR PNP
+//UTILITY FOR PROCESS VISUAL
     bool estimateFramePose(
         const std::vector<cv::Point2f>& points1,
         const std::vector<cv::Point2f>& points2,
@@ -96,14 +83,17 @@ private:
         cv::Mat& t,
         cv::Mat& poseInlierMask,
         PnPResult& pnpResult);
-    
-    //INITIAL TRACK UPDATE: MATACH ALL FEATURES TO A TRACK
+
+    void buildValidCorrespondences(
+        std::vector<cv::Point2f>& points1,
+        std::vector<cv::Point2f>& points2,
+        std::vector<cv::DMatch>& validMatches);
+
     std::vector<std::uint8_t> initialTrackUpdate(
         const cv::Mat& finalMask,
         const std::vector<cv::DMatch>& validMatches,
         FrameId currentFrameId);
 
-    //MOTION GATING
     bool evaluateMotionGating(
         const std::vector<cv::DMatch>& validMatches,
         const cv::Mat& inlierMask,
@@ -114,7 +104,6 @@ private:
         const PnPResult& pnpResult,
         FrameId currentFrameId);
 
-    //PARALLAX AND BASELINE CHECK COMBINED
     std::vector<TrackId> parallaxBaselineCheck(FrameId currentFrameId,bool usePnP);
 
     //VALIDATE A TRNAGULATED POINT
@@ -127,12 +116,5 @@ private:
         const Eigen::Matrix4d& currentTcw,
         const Eigen::Matrix3d& intrinsicMatrix) const;
 
-    //VALIDATES A NEW FEATURE IN TRINAGULATED TRACK
-    bool matchTriangulatedFeatures(
-        const Eigen::Vector3d& pointWorld,
-        const FeatureObservation& observation,
-        const Eigen::Matrix4d& Tcw,
-        const Eigen::Matrix3d& K) const;
-
-    void triangulatedTrackUpdated(FrameId currentFrameId);    
+    double maxTriangulationReprojectionErrorPixels_{3.0};
 };
