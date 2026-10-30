@@ -88,7 +88,7 @@ add_executable(slam_app
     src/SLAMSystem/MonocularEKFSLAMSystem.cpp
 
     #Configuration
-    src/Configuration/ConfigLoader.cpp
+    src/Configuration/NewConfigLoader.cpp
 
     #Factory
     src/Factory/SLAMSystemFactory.cpp

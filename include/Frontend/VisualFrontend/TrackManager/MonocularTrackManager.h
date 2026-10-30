@@ -18,7 +18,7 @@ class MonocularTrackManager final : public ITrackManager
 {
 public:
     //CONSTRUCTOR
-    explicit MonocularTrackManager(VisualTrackConfig& config);
+    explicit MonocularTrackManager(const VisualTrackConfig& config);
 
     //DESTRUCTOR
     ~MonocularTrackManager() override = default;

@@ -11,7 +11,8 @@ MonocularFeatureTrack::MonocularFeatureTrack(
       state_(TrackState::Tentative),
       observations_{initialObservation},
       firstFrameId_(initialObservation.frameId),
-      lastFrameId_(initialObservation.frameId)
+      prevFrameId_(initialObservation.frameId),
+      currentFrameId(initialObservation.frameId)
 {
 }
 
@@ -37,12 +38,18 @@ MonocularFeatureTrack::getObservations() const noexcept
 }
 
 //IF A FEATURE IS MACTCHED IN A TRACK, ADD AN OBSERVATION
-bool MonocularFeatureTrack::addObservation(const FeatureObservation& observation)
+bool MonocularFeatureTrack::addObservation(
+    const FeatureObservation& observation)
 {
     // Reject duplicate or out-of-order frame observations.
-    if (!observations_.empty() && observation.frameId <= observations_.back().frameId) return false;
+    if (!observations_.empty() &&
+        observation.frameId <= observations_.back().frameId)
+        return false;
 
-    observations_.push_back(observation); // Append the new observation.
+    prevFrameId_ = currentFrameId;
+    currentFrameId = observation.frameId;
+
+    observations_.push_back(observation);
     return true;
 }
 
@@ -89,7 +96,7 @@ FrameId MonocularFeatureTrack::getFirstFrameId() const noexcept
 
 FrameId MonocularFeatureTrack::getLastFrameId() const noexcept
 {
-    return prevFrameId_;
+    return currentFrameId;
 }
 
 

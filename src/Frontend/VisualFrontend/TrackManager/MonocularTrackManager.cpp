@@ -12,7 +12,7 @@
 #include <algorithm>
 
 //CONSTRUCTOR TAKES CONFIGURATION DATA ASSIGNS THEM
-MonocularTrackManager::MonocularTrackManager(VisualTrackConfig& config)
+MonocularTrackManager::MonocularTrackManager(const VisualTrackConfig& config)
     : tentative_max_misses(std::max(1, config.tentative_max_misses)),
       tentative_max_matches(std::max(1, config.tentative_max_match)),
       tentative_max_age(std::max(1, config.tentative_max_age)),
@@ -43,6 +43,8 @@ MonocularTrackManager::MonocularTrackManager(VisualTrackConfig& config)
       landmark_lost_max_matches(
           std::max(1, config.landmark_lost_max_matches))
 {
+    std::cout << "Tentative promotion threshold: "
+          << tentative_max_matches << std::endl;
 }
 
 IFeatureTrack* MonocularTrackManager::getTrack(
@@ -141,6 +143,22 @@ void MonocularTrackManager::update(
     //COUNT OF TOTAL FEATURE OBSERVATIONS
     const std::size_t currentCount = currentObservations.size();
 
+    //COUNTERS FOR LOGS
+    // TRACK ASSOCIATION DIAGNOSTICS
+    std::size_t maskPassed = 0;
+    std::size_t maskRejected = 0;
+    std::size_t invalidMatchIndices = 0;
+    std::size_t invalidFeatureIndices = 0;
+    std::size_t missingTrackIds = 0;
+    std::size_t candidateMatches = 0;
+
+    std::size_t duplicateCurrentFeature = 0;
+    std::size_t duplicateTrack = 0;
+    std::size_t trackNotFound = 0;
+    std::size_t appendFailures = 0;
+    std::size_t successfulAssociations = 0;
+    std::size_t activePromotions = 0;
+
     //FOR ALL OBSERVATIONS, INIT SIZE OF TRACK IDs VECTOR
     currentFeatureTrackIds_.assign(currentCount, TrackId{0});
 
@@ -164,13 +182,20 @@ void MonocularTrackManager::update(
     for (std::size_t i = 0; i < matches.size(); ++i)
     {
         //GEOMETRIC MASK CHECK NOT POSSIBLE, SKIP THIS MATCH CHECK
-        if (i >= geometricInlierMask.size() ||geometricInlierMask[i] == 0) continue;
+        if (i >= geometricInlierMask.size() ||geometricInlierMask[i] == 0){
+            ++maskRejected;
+            continue;
+        }
+        ++maskPassed;
 
         //CACHE THE MATCH
         const cv::DMatch& match = matches[i];
         
         //INVALID MATCHING QUERIES
-        if (match.queryIdx < 0 || match.trainIdx < 0) continue;
+        if (match.queryIdx < 0 || match.trainIdx < 0){
+            ++invalidMatchIndices;
+            continue;
+        }
 
         //INDICES OF MATCHED FEATURES IN TWO FRAMES KEYPOINTS
         const std::size_t previousIndex = static_cast<std::size_t>(match.queryIdx);
@@ -178,15 +203,22 @@ void MonocularTrackManager::update(
 
         //INDICES VALIDATION
         if (previousIndex >= previousFeatureTrackIds_.size() ||
-            currentIndex >= currentCount) continue;
+            currentIndex >= currentCount){
+            ++invalidFeatureIndices;
+            continue;    
+        }
 
         //GET THE TRACK OF CURRENT FEATURE MATCH FROM PREV FRAME
         const TrackId trackId = previousFeatureTrackIds_[previousIndex];
 
         //IF NO TRACK ASSIGNED IN PREV FRAME, SKIP THE MATCH
-        std::cout<<"Feature track missing in previous frame."<<std::endl;
-        if (trackId == TrackId{0}) continue;
+        // std::cout<<"Feature track missing in previous frame."<<std::endl;
+        if (trackId == TrackId{0}){
+            ++missingTrackIds;
+            continue;
+        }
         
+        ++candidateMatches;
         candidateMatchIndices.push_back(i);
     }
 
@@ -211,15 +243,28 @@ void MonocularTrackManager::update(
         const std::size_t currentIndex =static_cast<std::size_t>(match.trainIdx);
 
         //ONE FEATURE WILL BE USED ONLY ONCE
-        if (currentAssigned[currentIndex]) continue;
+        if (currentAssigned[currentIndex]){
+            ++duplicateCurrentFeature;
+            continue;
+        }
         
         //ONE TRACK WILL BE USED ONLY ONCE
         const TrackId trackId = previousFeatureTrackIds_[previousIndex]; //gte prev track from prev frame
-        if (continuedTracks.find(trackId) != continuedTracks.end()) continue; //if already used skip it and skip frame
+        if (continuedTracks.find(trackId) != continuedTracks.end()){ //if already used skip it and skip frame
+            ++duplicateTrack;
+            continue;
+        }
         MonocularFeatureTrack* track = getMonocularTrack(trackId); //get track object from the id
-        if(track==nullptr) continue;
+        if(track==nullptr){
+            ++trackNotFound;
+            continue;
+        }
 
-        if (!appendObservation(*track,currentObservations[currentIndex])) continue;
+        if (!appendObservation(*track,currentObservations[currentIndex])){
+            ++appendFailures;
+            continue;
+        }
+        ++successfulAssociations;
         track->incrementTrackAge();
 
         //IF FOUND, FAILURE COUNTER RESETS
@@ -228,12 +273,32 @@ void MonocularTrackManager::update(
 
         // PROMOTE THE TENTATIVE TRACK
         if (track->getState() == TrackState::Tentative && track->getConsecutiveInliers() >=
-                tentative_max_matches) track->setState(TrackState::Active);
+                tentative_max_matches){
+                    ++activePromotions;
+                    track->setState(TrackState::Active);}
 
         currentFeatureTrackIds_[currentIndex] = trackId;
         currentAssigned[currentIndex] = true;
         continuedTracks.insert(trackId);
     }
+
+
+    std::cout
+    << "\n========== TRACK ASSOCIATION DIAGNOSTICS ==========\n"
+    << "Input matches:                 " << matches.size() << '\n'
+    << "Geometric mask passed:         " << maskPassed << '\n'
+    << "Geometric mask rejected:      " << maskRejected << '\n'
+    << "Invalid match indices:        " << invalidMatchIndices << '\n'
+    << "Invalid feature indices:      " << invalidFeatureIndices << '\n'
+    << "Missing previous track IDs:   " << missingTrackIds << '\n'
+    << "Candidate matches:            " << candidateMatches << '\n'
+    << "Duplicate current features:   " << duplicateCurrentFeature << '\n'
+    << "Duplicate tracks:             " << duplicateTrack << '\n'
+    << "Track objects not found:      " << trackNotFound << '\n'
+    << "Observation append failures:  " << appendFailures << '\n'
+    << "Successful associations:     " << successfulAssociations << '\n'
+    << "Promoted to Active:           " << activePromotions << '\n'
+    << "====================================================\n";
 
     // EXISTING TRACKS MISSED: UPDATE COUNTERS: CHECK IN MAP OF EXISTING TRACKS
     for (auto it = tracks_.begin(); it != tracks_.end();)

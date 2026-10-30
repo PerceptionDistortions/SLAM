@@ -7,7 +7,7 @@ class OpenCVEPnPRansac final : public IPnPAlgorithm
 public:
     OpenCVEPnPRansac();
 
-    explicit OpenCVEPnPRansac(const PnPConfig& config);
+    explicit OpenCVEPnPRansac(const PnpConfig& config);
 
     bool estimate(
         const std::vector<cv::Point3f>& objectPoints,
@@ -17,5 +17,5 @@ public:
         PnPResult& result) const override;
 
 private:
-    PnPConfig config_;
+    PnpConfig config_;
 };

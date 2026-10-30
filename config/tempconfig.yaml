@@ -1,5 +1,5 @@
 slam_system:
-  type: monocular #mono,mono_vi,stereo_vi,multiview_vi
+  type: mono #mono,mono_vi,stereo_vi,multiview_vi
   
   #monocular slam sensor id used
   mono_cam_id: cam0
@@ -13,14 +13,73 @@ slam_system:
   stereo_vi_right_cam_id: cam1
   stereo_vi_imu_id: imu0
 
+  controlled_playback: true #PRESS KEY P TO START THE NEXT ITERATION
+
   #multiview_vi sensor id used: TODO
 
   visualizer: pangolin
+
+sensor_data_source:
+  type: dataset #physical, dataset
+
+  #DATASET
+  dataset_id: euroc
+  dataset_path: "datasets/euroc"
+  playback_rate: 1.0
+
+sensors:
+  #CAM 0 EUROC
+  - id: cam0
+    type: camera
+    source_id: euroc
+    driver: euroc
+    config:
+      stream: cam0
+      data_path: "mav0/cam0/data"
+      csv: "mav0/cam0/data.csv"
+      calibration:
+        type: loader
+        name: euroc_yaml
+        file: "mav0/cam0/sensor.yaml"
+
+  #CAM 1 EUROC
+  - id: cam1
+    type: camera
+    source_id: euroc
+    driver: euroc
+    config:
+      stream: cam1
+      data_path: "mav0/cam1/data"
+      csv: "mav0/cam1/data.csv"
+      calibration:
+        type: loader
+        name: euroc_yaml
+        file: "mav0/cam1/sensor.yaml"
+
+  #IMU: EUROC
+  - id: imu0
+    type: imu
+    source_id: euroc
+    driver: euroc
+    config:
+      stream: imu0
+      csv: "mav0/imu0/data.csv"
+      calibration:
+        type: loader
+        name: euroc_yaml
+        file: "mav0/imu0/sensor.yaml"
 
 visual_frontend:
   #PREPROCESS
   motion_blur: laplacian
   light_exposure: clahe
+
+  #clahe params
+  clahe_cliplimit: 2.0
+  clahe_tile_grid_size: 8 
+
+  #LAPLACIAN
+  laplacian_variance_threshold: 100.0
 
   #FEATURE DETECTION AND MATCHING
   detection_description: orb
@@ -37,6 +96,9 @@ visual_frontend:
   cross_check: mutual_best
   distance_filtering: fixed_distance
 
+  #FIXED DISTANCE CHECKER
+  fixed_distance_filter_max_distance: 60
+
   #RANSAC
   recover_pose_distance_threshold: 1e6
 
@@ -47,7 +109,7 @@ visual_frontend:
 track_management:
   tentative_age: 20
   tentative_max_miss: 2
-  tentative_max_match: 2
+  tentative_max_match: 1
   
   active_age: 20
   active_max_miss: 2
@@ -67,10 +129,11 @@ track_management:
   landmark_lost_max_match: 3
 
 pnp:
+  pnp_strategy: epnp
   minimum_landmark_pnp: 20
 
   #pnp configuration
-  pnp_iterations_count: 100;
+  pnp_iterations_count: 100
   pnp_reprojection_threshold: 3.0
   pnp_confidence: 0.99
   pnp_min_correspondence: 6
@@ -113,39 +176,39 @@ logging:
 
 
 
-visual_frontend_core:
+# visual_frontend_core:
 
   
-  #DETECTION AND DESCRIPTION
+#   #DETECTION AND DESCRIPTION
   
-  #FEATURE MATCHING
-  feature_matcher: bf
+#   #FEATURE MATCHING
+#   feature_matcher: bf
 
-  #BF MATCHING DISTANCE
-  bf_norm: hamming
+#   #BF MATCHING DISTANCE
+#   bf_norm: hamming
   
   
-  
-
   
 
-visual_frontend_track_management:
+  
+
+# visual_frontend_track_management:
 
  
 
-  #POSE ONLY REFINEMENT
-  pose_only_refinement: ceres
-  pose_only_refine_correspondence: 20
+#   #POSE ONLY REFINEMENT
+#   pose_only_refinement: ceres
+#   pose_only_refine_correspondence: 20
 
-  #POSE ONLY: CONFIG
-  ceres_por_max_iterations: 15
-  ceres_por_max_time_seconds: 0.05
-  ceres_por_use_robust_loss: true
-  ceres_por_huber_loss_scale: 3.0
-  ceres_por_function_tolerance: 1.0e-8
-  ceres_por_gradient_tolerance: 1.0e-10
-  ceres_por_parameter_tolerance: 1.0e-8
-  ceres_por_linear_solver: "dense_qr"
+#   #POSE ONLY: CONFIG
+#   ceres_por_max_iterations: 15
+#   ceres_por_max_time_seconds: 0.05
+#   ceres_por_use_robust_loss: true
+#   ceres_por_huber_loss_scale: 3.0
+#   ceres_por_function_tolerance: 1.0e-8
+#   ceres_por_gradient_tolerance: 1.0e-10
+#   ceres_por_parameter_tolerance: 1.0e-8
+#   ceres_por_linear_solver: "dense_qr"
   
 
 

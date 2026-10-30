@@ -1,6 +1,7 @@
 #include"Frontend/VisualFrontend/Pipeline/MonocularVisualFrontend.h"
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 #include "Frontend/VisualFrontend/Triangulation/MidpointTriangulator.h"
+#include "Configuration/NewConfigs/VisualFrontendConfigs.h"
 
 #include <utility>
 #include<iostream>
@@ -10,7 +11,7 @@
 
 //CONSTRUCTOR
 MonocularVisualFrontend::MonocularVisualFrontend(
-    const FrontendConfig& config,
+    const VisualFrontendConfigs& config,
     const CameraCalibration& cameraCalibration,
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
     std::unique_ptr<IFeatureMatcher> featureMatcher,
@@ -58,6 +59,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         return nullptr;
     }
     const FrameId currentFrameId = nextFrameId_++;
+    std::cout<<"Frame id: "<<currentFrameId<<std::endl;
 
     //--------------------------------------------------------------------
 
@@ -105,7 +107,6 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     }
 
     
-
 
     //FEATURE MATCHING: STORE RESULT IN DMATCH
     //KNN, or NORMAL+LOWE IN BF

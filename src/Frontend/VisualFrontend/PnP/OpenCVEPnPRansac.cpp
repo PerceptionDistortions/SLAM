@@ -4,13 +4,14 @@
 
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 OpenCVEPnPRansac::OpenCVEPnPRansac()
     : config_()
 {
 }
 
-OpenCVEPnPRansac::OpenCVEPnPRansac(const PnPConfig& config)
+OpenCVEPnPRansac::OpenCVEPnPRansac(const PnpConfig& config)
     : config_(config)
 {
 }
@@ -28,21 +29,22 @@ bool OpenCVEPnPRansac::estimate(
     // 1. Validate inputs.
     if (objectPoints.size() != imagePoints.size() ||
         objectPoints.size() <
-            static_cast<std::size_t>(config_.minCorrespondences) ||
+            static_cast<std::size_t>(config_.pnpMinCorrespondence) ||
+        cameraMatrix.empty() ||
         cameraMatrix.rows != 3 ||
         cameraMatrix.cols != 3 ||
-        cameraMatrix.empty() ||
-        config_.minCorrespondences < 4 ||
-        config_.iterationsCount <= 0 ||
-        config_.reprojectionThreshold <= 0.0f ||
-        config_.confidence <= 0.0 ||
-        config_.confidence >= 1.0)
+        config_.pnpMinCorrespondence < 4 ||
+        config_.pnpIterationsCount <= 0 ||
+        config_.pnpReprojectionThreshold <= 0.0 ||
+        config_.pnpConfidence <= 0.0 ||
+        config_.pnpConfidence >= 1.0)
     {
         std::cerr << "[OpenCVEPnPRansac] Invalid input."
                   << std::endl;
         return false;
     }
 
+    // 2. Validate that all input points are finite.
     for (std::size_t i = 0; i < objectPoints.size(); ++i)
     {
         const auto& P = objectPoints[i];
@@ -60,7 +62,7 @@ bool OpenCVEPnPRansac::estimate(
         }
     }
 
-    // 2. EPnP inside RANSAC.
+    // 3. Run EPnP inside RANSAC.
     cv::Mat rvec;
     cv::Mat tvec;
     cv::Mat inlierMatrix;
@@ -73,9 +75,9 @@ bool OpenCVEPnPRansac::estimate(
         rvec,
         tvec,
         false,
-        config_.iterationsCount,
-        config_.reprojectionThreshold,
-        config_.confidence,
+        config_.pnpIterationsCount,
+        static_cast<float>(config_.pnpReprojectionThreshold),
+        config_.pnpConfidence,
         inlierMatrix,
         cv::SOLVEPNP_EPNP);
 
@@ -86,7 +88,7 @@ bool OpenCVEPnPRansac::estimate(
         return false;
     }
 
-    // 3. Extract RANSAC inlier indices.
+    // 4. Extract RANSAC inlier indices.
     cv::Mat indices;
     inlierMatrix.convertTo(indices, CV_32S);
     indices = indices.reshape(1, 1);
@@ -123,14 +125,17 @@ bool OpenCVEPnPRansac::estimate(
         result.inlierMask[static_cast<std::size_t>(index)] = 1;
     }
 
-    // 4. Optionally refine using only RANSAC inliers.
+    // 5. Optionally refine the pose using only RANSAC inliers.
     cv::Mat refinedRvec = rvec.clone();
     cv::Mat refinedTvec = tvec.clone();
 
-    if (config_.refineWithInliers)
+    if (config_.pnpRefineWithInliers)
     {
         std::vector<cv::Point3f> inlierObjectPoints;
         std::vector<cv::Point2f> inlierImagePoints;
+
+        inlierObjectPoints.reserve(result.inlierIndices.size());
+        inlierImagePoints.reserve(result.inlierIndices.size());
 
         for (const int index : result.inlierIndices)
         {
@@ -156,11 +161,11 @@ bool OpenCVEPnPRansac::estimate(
         }
     }
 
-    // 5. Convert rotation vector to rotation matrix.
+    // 6. Convert rotation vector to rotation matrix.
     cv::Mat R;
     cv::Rodrigues(refinedRvec, R);
 
-    // 6. Compute final inlier reprojection error and positive depth.
+    // 7. Compute reprojection error and positive depth for RANSAC inliers.
     std::vector<cv::Point2f> projectedPoints;
 
     cv::projectPoints(
@@ -176,6 +181,9 @@ bool OpenCVEPnPRansac::estimate(
 
     R.convertTo(R64, CV_64F);
     refinedTvec.convertTo(t64, CV_64F);
+
+    // Ensure translation is a 3x1 double-precision vector.
+    t64 = t64.reshape(1, 3);
 
     double totalError = 0.0;
     int positiveDepthCount = 0;
@@ -203,6 +211,7 @@ bool OpenCVEPnPRansac::estimate(
         }
     }
 
+    // 8. Populate result.
     result.rotation = R64;
     result.translation = t64;
     result.rotationVector = refinedRvec.clone();

@@ -73,21 +73,41 @@
 #include"Frontend/VisualFrontend/PnP/OpenCVEPnPRansac.h"
 
 
-std::unique_ptr<SLAMSystem> SLAMSystemFactory::create(const SystemConfig& config)
+//TRIGEGRS FACTORY FOR EACH TYPE OF SLAM
+//CURRENTLY ONLY 
+std::unique_ptr<SLAMSystem> SLAMSystemFactory::create(const SystemConfigs& config)
 {
-    switch (config.system.mode)
+    const std::string& slamType = config.slam.type;
+
+    if (slamType == "mono" || slamType == "monocular")
     {
-        case SLAMType::Monocular: return createMonocular(config);
-        case SLAMType::MonocularVI: throw std::runtime_error("Monocular VI-SLAM not implemented.");
-        case SLAMType::StereoVI:  throw std::runtime_error("Stereo VI-SLAM not implemented.");
-        default:
-            throw std::runtime_error("Unsupported SLAM type.");
+        return createMonocular(config);
     }
+
+    if (slamType == "mono_vi" || slamType == "monocular_vi")
+    {
+        throw std::runtime_error("Monocular VI-SLAM not implemented.");
+    }
+
+    if (slamType == "stereo_vi")
+    {
+        throw std::runtime_error("Stereo VI-SLAM not implemented.");
+    }
+
+    if (slamType == "multiview_vi")
+    {
+        throw std::runtime_error(
+            "Multiview VI-SLAM not implemented.");
+    }
+
+    throw std::runtime_error(
+        "Unsupported SLAM type: " + slamType);
 }
 
 
-//COMMON DEPENDENCIES
-SLAMSystemDependencies SLAMSystemFactory::createDependencies(const SystemConfig& config,
+//ALL NECESSARY MODULES INIT
+//SOME COMMON WILL BE CREATED HERE ITSELF
+SLAMSystemDependencies SLAMSystemFactory::createDependencies(const SystemConfigs& config,
 const std::string& configPath)
 {
     SLAMSystemDependencies dependencies;
@@ -108,224 +128,192 @@ const std::string& configPath)
 }
 
 
-
-//MONOCULAR SLAM
-std::unique_ptr<SLAMSystem>
-SLAMSystemFactory::createMonocular(const SystemConfig& config)
+std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfigs& config)
 {
-    //COMMON DEPENDENCIES: MAP AND SENSORS
-    SLAMSystemDependencies dependencies = createDependencies(config,"config/system.yaml");
+    // COMMON DEPENDENCIES: MAP AND SENSORS
+    SLAMSystemDependencies dependencies =createDependencies(config, "config/system.yaml");
 
-    //CAMERA CALIBRATION VALUES ARE REQUIRED IN FRONTEND
-    const std::string& cameraName =config.system.monocular.camera;
+    //CAMERA CALIBRATION: REQUIRED IN THE VISUAL FRONTEND
+    const std::string& cameraName = config.slam.monoCamId;
     auto cameraSensor =dependencies.sensorManager->getSensor(cameraName);
     if (!cameraSensor) throw std::runtime_error("Camera sensor not found: " + cameraName);
-    const ICalibration* calibration =cameraSensor->getCalibration();
-    const CameraCalibration* cameraCalibration =dynamic_cast<const CameraCalibration*>(calibration);
+    const ICalibration* calibration = cameraSensor->getCalibration();
+    const CameraCalibration* cameraCalibration = dynamic_cast<const CameraCalibration*>(calibration);
     if (!cameraCalibration) throw std::runtime_error("Sensor '" + cameraName +"' does not have CameraCalibration.");
 
+    //VISUAL FRONTEND CONFIGURATION
+    //FIRST CREATE ALL SUB MODULES
+    const auto& visualConfig = config.visualFrontend;
 
-    //VISUAL FRONTEND CONFIG
-    const auto& visualConfig =config.frontend.visual; //VISUAL CONFIG
+    //FEATURE DETECTION AND DESCRIPTION
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetectorDescriptor;
-
-    if (visualConfig.detectorDescriptor.type == "orb")
+    if (visualConfig.detectionDescription == "orb")
     {
         featureDetectorDescriptor =std::make_unique<ORBDetectorDescriptor>(
-                visualConfig.detectorDescriptor.nFeatures,
-                visualConfig.detectorDescriptor.scaleFactor,
-                visualConfig.detectorDescriptor.nLevels);
+                visualConfig.orbFeatureCount,
+                visualConfig.orbScaleFactor,
+                visualConfig.orbLevels);
     }
     else
     {
-        throw std::runtime_error("Unsupported feature detector/descriptor: " + visualConfig.detectorDescriptor.type);
+        throw std::runtime_error("Unsupported feature detector/descriptor: " +visualConfig.detectionDescription);
     }
 
-    //FEATURE MATCHER
-    //BASED ON CONFIG
-    //NORMS: HAMMING, ETC.
+    //FEATURE MATCHING: BF
     std::unique_ptr<IFeatureMatcher> featureMatcher;
 
-    if (visualConfig.featureMatching.type == "bf")
+    if (visualConfig.featureMatching == "bf")
     {
-        int normType;
-        if (visualConfig.featureMatching.descriptor == "hamming")
-        {
-            normType = cv::NORM_HAMMING;
-        }
-        else
-        {
-            throw std::runtime_error(
-                "Unsupported descriptor distance: " +
-                visualConfig.featureMatching.descriptor);
-        }
-        featureMatcher =std::make_unique<BruteForceMatcher>(normType);
+        // ORB uses binary descriptors.
+        featureMatcher =std::make_unique<BruteForceMatcher>(cv::NORM_HAMMING);
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported feature matcher: " +visualConfig.featureMatching);
+    }
+
+    //MOTION BLUE CHECK
+    std::unique_ptr<IMotionBlurChecker> motionBlurChecker;
+
+    if (visualConfig.motionBlur == "laplacian")
+    {
+        motionBlurChecker =std::make_unique<LaplacianBlurChecker>(visualConfig.laplacianVarianceThreshold);
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported motion blur method: " +visualConfig.motionBlur);
+    }
+
+    //LIGHT EXPOSURE CHECK: ALGORITHM STRATEGY WILL DEPEND ON CONFIG
+    std::unique_ptr<IExposureCorrector> exposureCorrector;
+    if (visualConfig.lightExposure == "clahe")
+    {
+        // Uses the CLAHE component's default configuration.
+        exposureCorrector =std::make_unique<CLAHEExposureCorrector>(visualConfig.claheCliplimit,
+        visualConfig.claheTileLimitSize);
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported exposure correction method: " +visualConfig.lightExposure);
+    }
+
+    //DESCRIPTOR CROSS CHECKER ALGO SRATEGY
+    std::unique_ptr<ICrossCheckStrategy> crossChecker;
+
+    if (visualConfig.crossCheck == "mutual_best")
+    {
+        crossChecker =std::make_unique<MutualBestCrossCheck>();
+    }
+    else if (visualConfig.crossCheck != "none")
+    {
+        throw std::runtime_error("Unsupported cross-check strategy: " +visualConfig.crossCheck);
+    }
+
+    //DESCRIPTOR DISTANCE FILTER
+    std::unique_ptr<IDistanceFilter> distanceFilter;
+
+    if (visualConfig.distanceFiltering == "fixed_distance")
+    {
+        // The current VisualFrontendConfigs does not expose
+        // maxDistance. Use the filter's default constructor.
+        distanceFilter =
+        std::make_unique<FixedDistanceFilter>(visualConfig.fixedDistanceFilterMaxDistance);
     }
     else
     {
         throw std::runtime_error(
-            "Unsupported feature matcher: " +
-            visualConfig.featureMatching.type);
+            "Unsupported distance filtering strategy: " +
+            visualConfig.distanceFiltering);
     }
 
-    //MOTION BLUR CHECKER
-    // MOTION BLUR CHECKER
-    std::unique_ptr<IMotionBlurChecker> motionBlurChecker;
+    //TRACK MANAGER: HARD DEFINED NO NEED OF CONFIG
+    std::unique_ptr<ITrackManager> trackManager =
+        std::make_unique<MonocularTrackManager>(config.visualTracks);
 
-    const auto& motionBlurConfig =
-        visualConfig.preprocessing.motionBlur;
+    //MOTION GATING HARD DEFINED
+    std::unique_ptr<IMotionGating> motionGating =std::make_unique<MonocularMotionGating>();
 
-    if (motionBlurConfig.enabled)
+    //PNP
+    std::unique_ptr<IPnPAlgorithm> pnpRansac;
+
+    if (config.pnp.pnpStrategy == "epnp")
     {
-        if (motionBlurConfig.method == "laplacian")
-        {
-            motionBlurChecker =
-                std::make_unique<LaplacianBlurChecker>(motionBlurConfig.laplacianVariance.threshold);
-        }
-        else
-        {
-            throw std::runtime_error("Unsupported motion blur method: " +motionBlurConfig.method);
-        }
-    }
-    //LIGHT EXPOSURE CHECKER
-    std::unique_ptr<IExposureCorrector> exposureCorrector;
-
-    const auto& illuminationConfig =visualConfig.preprocessing.illumination;
-
-    if (illuminationConfig.enabled)
-    {
-        if (illuminationConfig.method == "clahe")
-        {
-            exposureCorrector =std::make_unique<CLAHEExposureCorrector>(
-                    illuminationConfig.clahe.clipLimit,
-                    illuminationConfig.clahe.tileGridSize
-                );
-        }
-        else
-        {
-            throw std::runtime_error("Unsupported illumination method: " +
-                illuminationConfig.method
-            );
-        }
-    }
-
-    //CROSS CHECKER
-    std::unique_ptr<ICrossCheckStrategy> crossChecker;
-
-    const auto& crossCheckConfig =visualConfig.crossCheck;
-
-    if (visualConfig.featureMatching.crossCheck)
-    {
-        if (crossCheckConfig.type == "mutual_best")
-        {
-            crossChecker =std::make_unique<MutualBestCrossCheck>();
-        }
-        else
-        {
-            throw std::runtime_error(
-                "Unsupported cross-check strategy: " +
-                crossCheckConfig.type
-            );
-        }
-    }
-
-    //DISTANCE DESCRIPTOR CHECKER
-    std::unique_ptr<IDistanceFilter> distanceFilter;
-    const auto& distanceFilterConfig =visualConfig.distanceFiltering;
-
-    std::cout
-        << "Distance filtering type = ["
-        << distanceFilterConfig.type
-        << "]"
-        << std::endl;
-
-    std::cout
-        << "Distance filtering max distance = "
-        << distanceFilterConfig.maxDistance
-        << std::endl;
-
-    //DISTANCE FILTER CHECK
-    if (distanceFilterConfig.type == "fixed_distance")
-    {
-        distanceFilter =std::make_unique<FixedDistanceFilter>(distanceFilterConfig.maxDistance);
+        pnpRansac =std::make_unique<OpenCVEPnPRansac>(config.pnp);
     }
     else
     {
-        throw std::runtime_error("Unsupported distance filtering strategy: " +
-            distanceFilterConfig.type);
+        throw std::runtime_error("Unsupported PnP strategy: " + config.pnp.pnpStrategy);
     }
-
-    //MONOCULAR TRACK MANAGER
-    std::unique_ptr<ITrackManager> trackManager=std::make_unique<MonocularTrackManager>();
-
-    //MONOCULAR MOTION GATING
-    std::unique_ptr<IMotionGating> motionGating=std::make_unique<MonocularMotionGating>();
-
-    //PNP STRATEGY
-    std::unique_ptr<IPnPAlgorithm> pnpRansac=std::make_unique<OpenCVEPnPRansac>();
-
-    //VISUAL FRONTEND
+    // ---------------------------------------------------------
+    // VISUAL FRONTEND
+    // ---------------------------------------------------------
     auto visualFrontend =
-    std::make_unique<MonocularVisualFrontend>(
-        config.frontend,
-        *cameraCalibration,
-        std::move(featureDetectorDescriptor),
-        std::move(featureMatcher),
-        std::move(motionBlurChecker),
-        std::move(exposureCorrector),
-        std::move(crossChecker),
-        std::move(distanceFilter),
-        std::move(trackManager),
-        std::move(motionGating),
-        std::move(pnpRansac),
-        *dependencies.mapManager,
-        cameraName
-    );
+        std::make_unique<MonocularVisualFrontend>(
+            visualConfig,
+            *cameraCalibration,
+            std::move(featureDetectorDescriptor),
+            std::move(featureMatcher),
+            std::move(motionBlurChecker),
+            std::move(exposureCorrector),
+            std::move(crossChecker),
+            std::move(distanceFilter),
+            std::move(trackManager),
+            std::move(motionGating),
+            std::move(pnpRansac),
+            *dependencies.mapManager,
+            cameraName);
 
-    //FRONTEND IN DEPENDENCIES: ONLY VISUAL REQUIRED
-    dependencies.frontend =std::make_unique<FrontendManager>(
+    // ---------------------------------------------------------
+    // FRONTEND MANAGER
+    // ---------------------------------------------------------
+    dependencies.frontend =
+        std::make_unique<FrontendManager>(
             nullptr,
             std::move(visualFrontend),
             nullptr);
 
-    //ESTIMATOR: ESEKF
-    //PREDICTOR: CONSTANT VELOCITY
-    //CORRECTOR: MONOCULAR VISUAL CORRECTOR
-    auto predictor =std::make_unique<ConstantVelocityPredictor>();
-    auto corrector =std::make_unique<MonocularVisualCorrector>();
-    dependencies.estimator =std::make_unique<ESEKF>(
+    // ---------------------------------------------------------
+    // ESTIMATOR: ESEKF
+    // ---------------------------------------------------------
+    auto predictor =
+        std::make_unique<ConstantVelocityPredictor>();
+
+    auto corrector =
+        std::make_unique<MonocularVisualCorrector>();
+
+    dependencies.estimator =
+        std::make_unique<ESEKF>(
             std::move(predictor),
             std::move(corrector));
 
-    //BACKEND IF ENABLED
-    // if (config.backend.enabled)
-    // {
-    //     dependencies.backend =std::make_unique<Backend>(config.backend,
-    //         dependencies.mapManager);
-    // }
-    dependencies.backend=nullptr;
+    // ---------------------------------------------------------
+    // BACKEND
+    // ---------------------------------------------------------
+    dependencies.backend = nullptr;
 
-    //LOOP CLOSURE IF ENABLED
-    // if (config.loopClosure.enabled)
-    // {
-    //     dependencies.loopClosure =
-    //         std::make_unique<LoopClosure>(config.loopClosure,dependencies.mapManager);
-    // }
-    dependencies.loopClosure=nullptr;
+    // ---------------------------------------------------------
+    // LOOP CLOSURE
+    // ---------------------------------------------------------
+    dependencies.loopClosure = nullptr;
 
+    // ---------------------------------------------------------
+    // VISUALIZER
+    // ---------------------------------------------------------
+    dependencies.visualizer = nullptr;
 
-    //VISUALIZER: ENABLE ONLY IF TRUE IN CONFIG
-    // if (config.system.visualizer == VisualizerType::Pangolin)
-    // {
-    //     dependencies.visualizer =std::make_unique<PangolinVisualizer>(config);
-    // }
-    dependencies.visualizer=nullptr;
+    // ---------------------------------------------------------
+    // FINAL SLAM SYSTEM
+    // ---------------------------------------------------------
+    const bool controlledPlayback =
+    config.slam.keyBasedControlledPlayback &&
+    config.sensorDataSource.type == "dataset";
 
-    //SLAM SYSTEM: FINAL
-    return std::make_unique<MonocularEKFSLAMSystem>(
-    std::move(dependencies),
-    config.system.monocular.camera
-    );
+    auto system = std::make_unique<MonocularEKFSLAMSystem>(
+        std::move(dependencies),
+        config.slam.monoCamId,
+        controlledPlayback);
+
+    return system;
 }
 
 

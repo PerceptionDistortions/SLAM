@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include<iostream>
+
 FrontendManager::FrontendManager(
     std::unique_ptr<ImuFrontend> imuFrontend,
     std::unique_ptr<VisualFrontend> visualFrontend,
@@ -19,11 +21,13 @@ FrontendManager::FrontendManager(
 
 FrontendManager::~FrontendManager() = default;
 
+//INITIALZE ALL COMPONENTS OF SLAM
 bool FrontendManager::init()
 {
-    if (initialized_)
-        return true;
+    std::cout<<"Init all components of SLAM System."<<std::endl;
+    if (initialized_) return true;
 
+    //ALL THREE FRONTENDS INIT
     if (visualFrontend_)
     {
         if (!visualFrontend_->init())

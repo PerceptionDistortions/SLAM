@@ -12,12 +12,18 @@
 #include <stdexcept>
 #include <utility>
 
+#include <iostream>
+#include <thread>
+#include <chrono>
+
 //CONSTRUCTOR
 //SLAM FACTORY HAS ALREADY CREATED EVERYTHING
 MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
     SLAMSystemDependencies dependencies,
-    const std::string& cameraName)
-    : camera_name_(cameraName)
+    const std::string& cameraName,
+    bool keyBasedControlledPlayback)
+    : camera_name_(cameraName),
+      keyBasedControlledPlayback_(keyBasedControlledPlayback)
 {
     sensor_manager_ = std::move(dependencies.sensorManager);
     map_manager_ = std::move(dependencies.mapManager);
@@ -178,6 +184,21 @@ bool MonocularEKFSLAMSystem::update()
             << " | timestamp=" << cameraData.timestamp
             << std::endl;
 
+        // CONTROLLED DATASET PLAYBACK
+        if (keyBasedControlledPlayback_)
+        {
+            char key;
+
+            std::cout << "\nPress P + Enter to process next frame..."
+                    << std::endl;
+
+            do
+            {
+                if (!(std::cin >> key))
+                    return false;
+            }
+            while (key != 'p' && key != 'P');
+        }
         // Convert CameraData -> FrontendData
         FrontendData frontendData = convertCameraDataToFrontendData(cameraData);
 

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Configuration/Configs/SystemConfig.h"
+// #include "Configuration/Configs/SystemConfig.h"
 #include "Frontend/VisualFrontend/Pipeline/VisualFrontend.h"
 #include "MapManager/MapManager.h"
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"

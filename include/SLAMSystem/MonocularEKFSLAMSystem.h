@@ -12,7 +12,8 @@ public:
     //CONSTRUCTOR
     //FEEDS DATA INTO THE PARENT CLASS
     MonocularEKFSLAMSystem(SLAMSystemDependencies dependencies,
-    const std::string& cameraName);
+    const std::string& cameraName,
+    bool keyBasedControlledPlayback);
     
     //DESTRUCTOR
     ~MonocularEKFSLAMSystem() override = default;
@@ -26,6 +27,7 @@ public:
 
 private:
     std::string camera_name_;
+    bool keyBasedControlledPlayback_{false}; //PRESS P TO GET NEXT ITERATION
 
     //BEFORE FEEDING TO FRONTEND
     FrontendData convertCameraDataToFrontendData(

@@ -9,13 +9,14 @@
 #include"Frontend/VisualFrontend/Parallax/MonocularParallaxChecker.h"
 #include"Frontend/VisualFrontend/Baseline/MonocularBaselineChecker.h"
 #include"AliasesEnumsTypes/CameraPose.h"
+#include "Configuration/NewConfigs/VisualFrontendConfigs.h"
 
 class MonocularVisualFrontend : public VisualFrontend
 {
 public:
     //CONSTRUCTOR: CALLED BY FACTORY
     MonocularVisualFrontend(
-    const FrontendConfig& config,
+    const VisualFrontendConfigs& config,
     const CameraCalibration& cameraCalibration,
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
     std::unique_ptr<IFeatureMatcher> featureMatcher,
@@ -45,7 +46,7 @@ private:
     
     // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR, Camera Id
     std::string cameraId_;
-    const FrontendConfig& config_;
+    const VisualFrontendConfigs& config_;
     CameraCalibration cameraCalibration_;
     cv::Mat cameraMatrix_;
     cv::Mat distCoeffs_;
@@ -69,6 +70,9 @@ private:
     //PARALLAX AND BASELINE CHECKS
     std::unique_ptr<IParallaxChecker> parallaxChecker_;
     std::unique_ptr<IBaselineChecker> baselineChecker_;
+
+    //LANDMARK ID COUNTER
+    LandmarkId nextLandmarkId_{0};
 
 private:
 //UTILITY FOR PROCESS VISUAL
@@ -106,7 +110,7 @@ private:
 
     std::vector<TrackId> parallaxBaselineCheck(FrameId currentFrameId,bool usePnP);
 
-    //VALIDATE A TRNAGULATED POINT
+    //VALIDATE A NEWLY TRNAGULATED POINT: IS IT GOOD TO CONTINUE?
     [[nodiscard]]
     bool validateTriangulatedPoint(
         const Eigen::Vector3d& pointWorld,
@@ -115,6 +119,15 @@ private:
         const Eigen::Matrix4d& previousTcw,
         const Eigen::Matrix4d& currentTcw,
         const Eigen::Matrix3d& intrinsicMatrix) const;
+
+    // VALIDATE EXISTING TRIANGULATED TRACK AGAINST CURRENT FRAME
+    bool matchTriangulatedFeatures(
+        const Eigen::Vector3d& pointWorld,
+        const FeatureObservation& observation,
+        const Eigen::Matrix4d& Tcw,
+        const Eigen::Matrix3d& K) const;
+
+    void triangulatedTrackUpdated(FrameId currentFrameId);
 
     double maxTriangulationReprojectionErrorPixels_{3.0};
 };

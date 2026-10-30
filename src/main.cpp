@@ -4,8 +4,8 @@
 #include <memory>
 #include <string>
 
-#include "Configuration/ConfigLoader.h"
-#include "Configuration/Configs/SystemConfig.h"
+#include "Configuration/NewConfigLoader.h"
+#include "Configuration/NewConfigs/SystemConfigs.h"
 #include "Factory/SLAMSystemFactory.h"
 #include "SLAMSystem/SLAMSystem.h"
 
@@ -13,9 +13,9 @@ int main()
 {
     try
     {
-        const std::string configPath = "config/system.yaml";
+        const std::string configPath = "config/tempconfig.yaml";
 
-        SystemConfig config = ConfigLoader::load(configPath);
+        SystemConfigs config = NewConfigLoader::load(configPath);
         std::cout << "Config loaded successfully." << std::endl;
 
         auto slamSystem = SLAMSystemFactory::create(config);

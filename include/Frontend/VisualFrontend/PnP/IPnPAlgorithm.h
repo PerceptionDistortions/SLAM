@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Frontend/VisualFrontend/PnP/PnPConfig.h"
+#include "Configuration/NewConfigs/PnpConfig.h"
 #include "Frontend/VisualFrontend/PnP/PnPResult.h"
 
 #include <opencv2/core.hpp>
