@@ -108,11 +108,11 @@ visual_frontend:
 
 track_management:
   tentative_age: 20
-  tentative_max_miss: 2
-  tentative_max_match: 1
+  tentative_max_miss: 3
+  tentative_max_match: 2
   
   active_age: 20
-  active_max_miss: 2
+  active_max_miss: 3
   active_max_match: 2
 
   triangulated_max_observations: 20
@@ -142,38 +142,30 @@ pnp:
 triangulation:
   triangulator: mid_point
 
+  #MID POINT CONFIG
+  midpoint_min_parallax_degree: 1.0
+  midpoint_min_baseline: 1e-6
+  midpoint_maxprojection_error_pixels: 3.0
+  midpoint_max_ray_separation: 0.0
+  midpoint_mindepth: 1e-6
+  midpoint_geometry_epsilon: 1e-10
+  midpoint_fraction_keyframe: 0.3
+
+#ESTIMATOR, PREDICTOR, CORRECTOR WILL BE HARD BOUND WITH SLAM TYPE
+estimation:
+  #COVARIANCE SD
+  position_sd: 0.0
+  velocity_sd: 0.5
+  orientation_sd: 0.0
+  acc_bias_sd: 0.0
+  gyro_bias_sd: 0.0
+
 logging:
   sensors: false
   visual_frontend: false
   estimation: false
   visualization: false
   map: false
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # visual_frontend_core:
@@ -186,10 +178,6 @@ logging:
 
 #   #BF MATCHING DISTANCE
 #   bf_norm: hamming
-  
-  
-  
-
   
 
 # visual_frontend_track_management:

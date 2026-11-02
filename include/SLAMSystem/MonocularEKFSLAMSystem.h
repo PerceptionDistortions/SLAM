@@ -30,8 +30,7 @@ private:
     bool keyBasedControlledPlayback_{false}; //PRESS P TO GET NEXT ITERATION
 
     //BEFORE FEEDING TO FRONTEND
-    FrontendData convertCameraDataToFrontendData(
-        const CameraData& cameraData) const;
+    FrontendData convertCameraDataToFrontendData(const CameraData& cameraData) const;
         
     bool initialized_{false};
     bool estimator_initialized_{false};

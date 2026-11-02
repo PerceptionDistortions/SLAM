@@ -20,6 +20,9 @@ void ESEKF::initialize(const StateEstimate& initialState)
     _nominalState.velocity = initialState.velocity;
     _nominalState.orientation = initialState.orientation.normalized();
     _nominalState.timestamp = initialState.timestamp;
+
+    //SET TO ZERO IN BEGIN OF EACH ITERATION
+    //COMPUTED AGAIN IN THE CORRECTION STAGE
     _errorState.reset();
 
     /*

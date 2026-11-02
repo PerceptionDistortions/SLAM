@@ -2,6 +2,7 @@
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 #include "Frontend/VisualFrontend/Triangulation/MidpointTriangulator.h"
 #include "Configuration/NewConfigs/VisualFrontendConfigs.h"
+#include"Configuration/NewConfigs/TriangulationConfig.h"
 
 #include <utility>
 #include<iostream>
@@ -12,6 +13,8 @@
 //CONSTRUCTOR
 MonocularVisualFrontend::MonocularVisualFrontend(
     const VisualFrontendConfigs& config,
+    const TriangulationConfig& triangulationConfig,
+    const VisualTrackConfig& visualTrackConfig,
     const CameraCalibration& cameraCalibration,
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
     std::unique_ptr<IFeatureMatcher> featureMatcher,
@@ -35,7 +38,9 @@ MonocularVisualFrontend::MonocularVisualFrontend(
           std::move(motionGating),
           std::move(pnpRansac),
           mapManager),
-      config_(config),cameraCalibration_(cameraCalibration),
+      config_(config),triangulationConfig_(triangulationConfig),
+      trackConfig_(visualTrackConfig),
+      cameraCalibration_(cameraCalibration),
       cameraId_(std::move(camId)),
       parallaxChecker_(std::make_unique<MonocularParallaxChecker>(0.3)),
       baselineChecker_(std::make_unique<MonocularBaselineChecker>(0.01))
@@ -106,7 +111,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         return nullptr;
     }
 
-    
+    //---------------------------------------------------------------------------
 
     //FEATURE MATCHING: STORE RESULT IN DMATCH
     //KNN, or NORMAL+LOWE IN BF
@@ -116,6 +121,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         return nullptr;
     }
 
+    //---------------------------------------------------------------------------
 
     //DESCRIPTOR FILTERING: CROSS CHECK: TODO
 
@@ -207,11 +213,11 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //1. Ratio in pnp was being checked wuith all descriptors instead of only landmark
 
 
-    //PARALLAX AND BASELINE CHECKS FOR TRACKS
+    //PARALLAX AND BASELINE CHECKS FOR TRACKS: GET TRIANGULATION CANDIDATES
     //DOES NOT DISCARD FRAME, KEYFRAME, NO DEMOTION OF TRACKS
-    //MARK TRIANGULATION TRACKS
+    //MUST SATISFY ACTIVE TRACK MAX MATCH COUNT
     const std::vector<TrackId> triangulationCandidates =parallaxBaselineCheck(currentFrameId, usePnP);
-    std::cout << "Triangulation candidates: "<< triangulationCandidates.size() << std::endl;
+    std::cout << "Triangulation candidates (parallax, baseline, active max match check): "<< triangulationCandidates.size() << std::endl;
     //CHALLENGES FACED IN PARALLEX AND BASELINE
     //1. Baseline not to be used without pnp, arbitrary and normalized scale
     //2. Parallax threshold relaxation brings better results
@@ -224,18 +230,12 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //AT LEAST 20 CORRESPONCECES BETWEN FEATURES AND LANDMARKS
 
 
-    //TRIANGULATION
-    //PARALLAX CHECK
-    //BASELINE CHECK IF PNP
+    //TRIANGULATION: ONLY FOR PARALLAX AND BASELINE (IF PNP) SUCCESS TRACKS
     //TRACK STATE: ACTIVE ONLY, NO TENTATIVE
     //NO LANDMARK SHOULD BE PREVIOUS FORMED FOR TRACK
     //NUMBER OF OBSERVATIONS: 3
     //CHECK IF THE POINT IS ALREADY TRIANGULATED
-
-    MidpointTriangulatorConfig triangulatorConfig;
-    triangulatorConfig.minParallaxDegrees = 0.3;
-    MidpointTriangulator triangulator(triangulatorConfig);
-
+    MidpointTriangulator triangulator(triangulationConfig_);
     Eigen::Matrix3d intrinsicMatrix;
     intrinsicMatrix << cameraCalibration_.fx, 0.0, cameraCalibration_.cx,
                        0.0, cameraCalibration_.fy, cameraCalibration_.cy,
@@ -258,6 +258,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     std::unordered_set<TrackId> newlyTriangulatedTracks;
     int triangulatedTracks=0;
 
+    //RUN THE LOOP IN ALL TRIANGULATION CANDIDATES DETERMINED BY PARALLAX AND BASELINE
     for (const TrackId trackId : triangulationCandidates)
     {
         IFeatureTrack* track = trackManager_->getTrack(trackId);
@@ -324,11 +325,6 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         }
         newlyTriangulatedTracks.insert(trackId);
         ++triangulatedTracks;
-
-
-        // std::cout << "[Triangulation] track=" << trackId
-        //           << " point_world=" << result.pointWorld.transpose()
-        //           << std::endl;
     }
     //CHALLENGES FACED IN TRIANGULATION
     //1. Segmentation fault: core dumped, very large number of landmarks
@@ -336,15 +332,16 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //This is because no landmark was present in the map manager.
     //Check that the point is already triangulated and skip
 
-    // KEYFRAME DETERMINATION BASED ON NUMBER OF VERIFIED TRNAGULATIONS
-    //PERCENT OF VALIDATIONS TOO
+    // KEYFRAME DETERMINATION
+    // NUMBER OF SUCCESSFUL VALIDATED TRIANGULATED POINTS
+    // PERCENT OF SUCCESSFUL VALIDATED TRIANGULATED POINTS
     std::cout<<"Validated triangulation count: "<<triangulatedTracks<<std::endl;
     const double verifiedRatio =triangulationCandidates.empty()
         ? 0.0: static_cast<double>(triangulatedTracks) /static_cast<double>(triangulationCandidates.size());
-    std::cout<<"Validated percent: "<<verifiedRatio<<std::endl;
-    if (verifiedRatio>=0.3 && currFramePose_.valid && triangulatedTracks>=10)
+    std::cout<<"Validated fraction to promote to keyframe: "<<verifiedRatio<<std::endl;
+    if (verifiedRatio>=triangulationConfig_.midpoint_fraction_keyframe && currFramePose_.valid && triangulatedTracks>=10)
     {
-        std::cout<<"Checking for keyframe validation"<<std::endl;
+        std::cout<<"Keyframe selected: TRUE"<<std::endl;
         auto keyframe = std::make_shared<Keyframe>(
             currentFrameId,
             frame->timestamp,
@@ -353,14 +350,14 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
 
         if (mapManager_.addKeyframe(keyframe))
         {
-            std::cout << "[Keyframe] Added frame "<< currentFrameId << std::endl;
+            std::cout << "KEYFRAME accepted by map mamager: "<< currentFrameId << std::endl;
         }
         else{
             std::cout<<"Map manager rejected track."<<std::endl;
         }
     }
     else{
-        std::cout<<"ratio or pose invalid."<<std::endl;
+        std::cout<<"Keyframe selected: FALSE (Ratio or pose invalid)"<<std::endl;
     }
     std::cout<<"Total active keyframes: "<<mapManager_.getKeyframeCount()<<std::endl;
     //CHALLENGES FACED WITH KEYFRAME DETERMINATION
@@ -980,9 +977,7 @@ bool MonocularVisualFrontend::evaluateMotionGating(
 }
 
 std::vector<TrackId>
-MonocularVisualFrontend::parallaxBaselineCheck(
-    FrameId currentFrameId,
-    bool usePnP)
+MonocularVisualFrontend::parallaxBaselineCheck(FrameId currentFrameId, bool usePnP)
 {
     //RETURN RESULT
     std::vector<TrackId> triangulationCandidates;
@@ -1017,8 +1012,7 @@ MonocularVisualFrontend::parallaxBaselineCheck(
             1.0).normalized();
     };
 
-    for (const TrackId trackId :
-         trackManager_->getTrackIds(TrackState::Active))
+    for (const TrackId trackId :trackManager_->getTrackIds(TrackState::Active))
     {
         IFeatureTrack* track = trackManager_->getTrack(trackId);
 
@@ -1026,6 +1020,8 @@ MonocularVisualFrontend::parallaxBaselineCheck(
         {
             continue;
         }
+
+        if(track->getConsecutiveInliers()<trackConfig_.active_max_matches) continue;
 
         // Already associated with a landmark: do not triangulate again.
         if (track->getLandmarkId().has_value())
@@ -1040,11 +1036,7 @@ MonocularVisualFrontend::parallaxBaselineCheck(
 
         for (const auto& observation : observations)
         {
-            if (observation.cameraId != cameraId_)
-            {
-                continue;
-            }
-
+            if (observation.cameraId != cameraId_) continue;
             if (observation.frameId == prevFrameId_)
             {
                 previousObservation = &observation;
@@ -1055,8 +1047,7 @@ MonocularVisualFrontend::parallaxBaselineCheck(
             }
         }
 
-        if (previousObservation == nullptr ||
-            currentObservation == nullptr)
+        if (previousObservation == nullptr || currentObservation == nullptr)
         {
             continue;
         }
@@ -1083,10 +1074,7 @@ MonocularVisualFrontend::parallaxBaselineCheck(
         //           << " sufficient=" << sufficientParallax
         //           << std::endl;
 
-        if (sufficientParallax)
-        {
-            triangulationCandidates.push_back(trackId);
-        }
+        if (sufficientParallax) triangulationCandidates.push_back(trackId);
     }
 
     return triangulationCandidates;

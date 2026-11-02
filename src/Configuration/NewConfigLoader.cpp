@@ -499,8 +499,7 @@ PnpConfig NewConfigLoader::parsePnp(
 
     PnpConfig config;
 
-    config.pnpStrategy =
-        readOrDefault(node, "pnp_strategy", config.pnpStrategy);
+    config.pnpStrategy =readOrDefault(node, "pnp_strategy", config.pnpStrategy);
 
     config.minimumLandmarkPnp = readOrDefault(
         node, "minimum_landmark_pnp",
@@ -542,6 +541,34 @@ TriangulationConfig NewConfigLoader::parseTriangulation(
 
     config.triangulator = readOrDefault(
         node, "triangulator", config.triangulator);
+
+    config.minParallaxDegrees = readOrDefault(
+    node, "midpoint_min_parallax_degree",
+    config.minParallaxDegrees);
+
+    config.minBaseline = readOrDefault(
+        node, "midpoint_min_baseline",
+        config.minBaseline);
+
+    config.maxReprojectionErrorPixels = readOrDefault(
+        node, "midpoint_maxprojection_error_pixels",
+        config.maxReprojectionErrorPixels);
+
+    config.maxRaySeparation = readOrDefault(
+        node, "midpoint_max_ray_separation",
+        config.maxRaySeparation);
+
+    config.minDepth = readOrDefault(
+        node, "midpoint_mindepth",
+        config.minDepth);
+
+    config.geometryEpsilon = readOrDefault(
+        node, "midpoint_geometry_epsilon",
+        config.geometryEpsilon);
+
+    config.midpoint_fraction_keyframe=readOrDefault(
+        node,"midpoint_fraction_keyframe",
+        config.midpoint_fraction_keyframe);
 
     return config;
 }

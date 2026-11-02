@@ -6,9 +6,7 @@ void ConstantVelocityPredictor::predictNominal(
     NominalState& state,
     const Measurement& measurement)
 {
-    const double dt =
-        measurement.timestamp() - state.timestamp;
-
+    const double dt = measurement.timestamp() - state.timestamp;
     state.position += state.velocity * dt;
 
     // Velocity remains constant.
@@ -22,15 +20,9 @@ Eigen::MatrixXd ConstantVelocityPredictor::computeF(
     const NominalState& state,
     const Measurement& measurement) const
 {
-    const double dt =
-        measurement.timestamp() - state.timestamp;
-
-    Eigen::Matrix<double, 15, 15> F =
-        Eigen::Matrix<double, 15, 15>::Identity();
-
-    F.block<3, 3>(0, 3) =
-        dt * Eigen::Matrix3d::Identity();
-
+    const double dt = measurement.timestamp() - state.timestamp;
+    Eigen::Matrix<double, 15, 15> F = Eigen::Matrix<double, 15, 15>::Identity();
+    F.block<3, 3>(0, 3) = dt * Eigen::Matrix3d::Identity();
     return F;
 }
 

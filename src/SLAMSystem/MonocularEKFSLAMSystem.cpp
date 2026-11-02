@@ -37,19 +37,28 @@ MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
 
 bool MonocularEKFSLAMSystem::init()
 {
-    if (initialized_)
-    {
-        return true;
-    }
+    if (initialized_) return true;
 
     //INIT AND START SENSOR
     if(!sensor_manager_->init()) return false;
     if(!sensor_manager_->start()) return false;
 
-    //INIT MAP MANAGER
+    //INIT ESTIMATOR: THE FIRST FRAME IS ORIGIN IN MONOCULAR
+    //CREATE AN STATE AND INIT ESTIMATOR, NOT POSSIBLE TO DIRECTLY ASSIGN
+    //COVARIANCE NEEDS TO BE INIT, INITIAL UNCETAINTY MATRIX
+    StateEstimate initialState;
+    initialState.timestamp = 0.0;
+    initialState.position = Eigen::Vector3d::Zero();
+    initialState.velocity = Eigen::Vector3d::Zero();
+    initialState.orientation = Eigen::Quaterniond::Identity();
+
+    estimator_->initialize(initialState);
+    estimator_initialized_ = true;
 
     //INIT FRONTEND
     if(!frontend_->init()) return false;
+
+    //INIT MAP MANAGER
 
     //INIT BACKEND
 
@@ -57,7 +66,6 @@ bool MonocularEKFSLAMSystem::init()
 
     //INIT VISUALIZER
 
-    estimator_initialized_ = false;
     running_ = false;
 
     initialized_ = true;
@@ -178,12 +186,6 @@ bool MonocularEKFSLAMSystem::update()
         // Only process the configured camera
         if (cameraData.sensor_id != camera_name_) return false;
 
-        std::cout<<"\n"
-            << "[CAMERA] Found "
-            << cameraData.sensor_id
-            << " | timestamp=" << cameraData.timestamp
-            << std::endl;
-
         // CONTROLLED DATASET PLAYBACK
         if (keyBasedControlledPlayback_)
         {
@@ -199,6 +201,14 @@ bool MonocularEKFSLAMSystem::update()
             }
             while (key != 'p' && key != 'P');
         }
+
+        //CAMERA TIMESTAMP
+        std::cout<<"\n"
+            << "[CAMERA] Found "
+            << cameraData.sensor_id
+            << " | timestamp=" << cameraData.timestamp
+            << std::endl;
+
         // Convert CameraData -> FrontendData
         FrontendData frontendData = convertCameraDataToFrontendData(cameraData);
 

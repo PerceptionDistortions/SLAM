@@ -13,21 +13,13 @@ namespace
     constexpr int MeasurementDimension = 6;
 }
 
-Eigen::Vector3d
-MonocularVisualCorrector::orientationError(
+Eigen::Vector3d MonocularVisualCorrector::orientationError(
     const Eigen::Quaterniond& measured,
     const Eigen::Quaterniond& estimated)
 {
-    Eigen::Quaterniond delta =
-        measured * estimated.conjugate();
-
+    Eigen::Quaterniond delta = measured * estimated.conjugate();
     delta.normalize();
-
-    if (delta.w() < 0.0)
-    {
-        delta.coeffs() *= -1.0;
-    }
-
+    if (delta.w() < 0.0) delta.coeffs() *= -1.0;
     return 2.0 * delta.vec();
 }
 
@@ -36,15 +28,12 @@ MonocularVisualCorrector::applyOrientationError(
     const Eigen::Vector3d& deltaTheta,
     const Eigen::Quaterniond& orientation)
 {
-    const double angle =
-        deltaTheta.norm();
-
+    const double angle = deltaTheta.norm();
     Eigen::Quaterniond deltaQuaternion;
 
     if (angle < 1e-12)
     {
-        deltaQuaternion =
-            Eigen::Quaterniond::Identity();
+        deltaQuaternion = Eigen::Quaterniond::Identity();
     }
     else
     {
@@ -202,7 +191,42 @@ void MonocularVisualCorrector::correct(
         (I - K * H).transpose()
         + K * R * K.transpose();
 
-    uncertainty.matrix() = updatedP;
+    // COVARIANCE RESET JACOBIAN
+    Eigen::Matrix<double, ErrorStateDimension, ErrorStateDimension> G =
+        Eigen::Matrix<double, ErrorStateDimension, ErrorStateDimension>::Identity();
 
+    const Eigen::Vector3d deltaTheta =
+        errorState.orientationError;
+
+    const double angle = deltaTheta.norm();
+
+    Eigen::Matrix3d skew;
+    skew << 0.0, -deltaTheta.z(), deltaTheta.y(),
+            deltaTheta.z(), 0.0, -deltaTheta.x(),
+            -deltaTheta.y(), deltaTheta.x(), 0.0;
+
+    Eigen::Matrix3d resetJacobian =
+        Eigen::Matrix3d::Identity();
+
+    if (angle > 1e-8)
+    {
+        resetJacobian +=
+            ((1.0 - std::cos(angle)) / (angle * angle)) * skew
+            + ((angle - std::sin(angle)) /
+            (angle * angle * angle)) * skew * skew;
+    }
+    else
+    {
+        resetJacobian +=
+            0.5 * skew + (1.0 / 6.0) * skew * skew;
+    }
+
+    G.block<3, 3>(6, 6) = resetJacobian;
+
+    // RESET COVARIANCE
+    uncertainty.matrix() =
+        G * updatedP * G.transpose();
+
+    // RESET ERROR STATE
     errorState.reset();
 }

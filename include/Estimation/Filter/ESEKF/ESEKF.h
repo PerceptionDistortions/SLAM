@@ -22,12 +22,8 @@ public:
 
     ~ESEKF() override = default;
 
-    void initialize(
-        const StateEstimate& initialState) override;
-
-    void process(
-        const Measurement& measurement) override;
-
+    void initialize(const StateEstimate& initialState) override;
+    void process(const Measurement& measurement) override;
     StateEstimate getEstimate() const override;
 
 private:
@@ -41,10 +37,10 @@ private:
     void injectStateEstimate();
 
 private:
+    //STATES
     NominalState _nominalState;
     ErrorState _errorState;
-    Covariance _covariance;
-
+    Covariance _covariance; //INDIRECT UNCERTAINTY IN NOMINAL LIKE KF
     std::unique_ptr<Predictor> _predictor;
     std::unique_ptr<Corrector> _corrector;
 

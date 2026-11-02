@@ -141,9 +141,14 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfi
     const CameraCalibration* cameraCalibration = dynamic_cast<const CameraCalibration*>(calibration);
     if (!cameraCalibration) throw std::runtime_error("Sensor '" + cameraName +"' does not have CameraCalibration.");
 
-    //VISUAL FRONTEND CONFIGURATION
-    //FIRST CREATE ALL SUB MODULES
+    //VISUAL FRONTEND CONFIGURATION    
     const auto& visualConfig = config.visualFrontend;
+
+    //TRIANGULATION CONFIGURATION
+    const auto& triangulationConfig=config.triangulation;
+
+    //VISUAL TRACK CONFIGURATION
+    const auto& visualTrackConfig=config.visualTracks;
 
     //FEATURE DETECTION AND DESCRIPTION
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetectorDescriptor;
@@ -244,12 +249,14 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfi
     {
         throw std::runtime_error("Unsupported PnP strategy: " + config.pnp.pnpStrategy);
     }
-    // ---------------------------------------------------------
-    // VISUAL FRONTEND
-    // ---------------------------------------------------------
+    
+    
+    //MONOCULAR VISUAL FRONTEND OBJECT
     auto visualFrontend =
         std::make_unique<MonocularVisualFrontend>(
             visualConfig,
+            triangulationConfig,
+            visualTrackConfig,
             *cameraCalibration,
             std::move(featureDetectorDescriptor),
             std::move(featureMatcher),
@@ -267,19 +274,11 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfi
     // FRONTEND MANAGER
     // ---------------------------------------------------------
     dependencies.frontend =
-        std::make_unique<FrontendManager>(
-            nullptr,
-            std::move(visualFrontend),
-            nullptr);
+        std::make_unique<FrontendManager>(nullptr,std::move(visualFrontend),nullptr);
 
-    // ---------------------------------------------------------
-    // ESTIMATOR: ESEKF
-    // ---------------------------------------------------------
-    auto predictor =
-        std::make_unique<ConstantVelocityPredictor>();
-
-    auto corrector =
-        std::make_unique<MonocularVisualCorrector>();
+    //ESTIMATOR: RIGID PREDICTOR AND CORRECTOR, AND ESEKF
+    auto predictor = std::make_unique<ConstantVelocityPredictor>();
+    auto corrector =std::make_unique<MonocularVisualCorrector>();
 
     dependencies.estimator =
         std::make_unique<ESEKF>(
@@ -301,9 +300,8 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfi
     // ---------------------------------------------------------
     dependencies.visualizer = nullptr;
 
-    // ---------------------------------------------------------
-    // FINAL SLAM SYSTEM
-    // ---------------------------------------------------------
+    //FINAL SLAM SYSTEM
+    //CONTROLLED PLAYBACK OPTION
     const bool controlledPlayback =
     config.slam.keyBasedControlledPlayback &&
     config.sensorDataSource.type == "dataset";
@@ -316,151 +314,8 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfi
     return system;
 }
 
+//MONOCULAR VI SLAM
 
-// ============================================================================
-// Monocular VI-SLAM
-// ============================================================================
+//STEREO VI SLAM
 
-// std::unique_ptr<SLAMSystem>
-// SLAMSystemFactory::createMonocularVI(const SystemConfig& config)
-// {
-//     SLAMSystemDependencies dependencies = createDependencies(config);
-
-//     //FRONTEND
-//     dependencies.frontend = std::make_unique<MonocularVIVisualFrontend>(config);
-
-//     // ------------------------------------------------------------------------
-//     // Estimator
-//     //
-//     // Monocular VI uses optimization-based estimation:
-//     //
-//     //     OptimizationEstimator
-//     //          |
-//     //          +-- sliding window
-//     //          +-- IMU preintegration
-//     //          +-- visual factors
-//     //          +-- IMU factors
-//     // ------------------------------------------------------------------------
-
-//     dependencies.estimator =std::make_unique<OptimizationEstimator>(config);
-
-
-//     // ------------------------------------------------------------------------
-//     // Backend
-//     // ------------------------------------------------------------------------
-
-//     if (config.backend.enabled)
-//     {
-//         dependencies.backend =
-//             std::make_unique<Backend>(
-//                 config,
-//                 dependencies.mapManager);
-//     }
-
-
-//     // ------------------------------------------------------------------------
-//     // Loop Closure
-//     // ------------------------------------------------------------------------
-
-//     if (config.loopClosure.enabled)
-//     {
-//         dependencies.loopClosure =
-//             std::make_unique<LoopClosure>(
-//                 config,
-//                 dependencies.mapManager);
-//     }
-
-
-//     // ------------------------------------------------------------------------
-//     // Visualizer
-//     // ------------------------------------------------------------------------
-
-//     if (config.system.visualizer == VisualizerType::Pangolin)
-//     {
-//         dependencies.visualizer =
-//             std::make_unique<PangolinVisualizer>(config);
-//     }
-
-
-//     // ------------------------------------------------------------------------
-//     // Construct concrete SLAM system
-//     // ------------------------------------------------------------------------
-
-//     return std::make_unique<MonocularVISLAMSystem>(
-//         config,
-//         std::move(dependencies));
-// }
-
-
-// // ============================================================================
-// // Stereo VI-SLAM
-// // ============================================================================
-
-// std::unique_ptr<SLAMSystem>
-// SLAMSystemFactory::createStereoVI(const SystemConfig& config)
-// {
-//     SLAMSystemDependencies dependencies =
-//         createDependencies(config);
-
-
-//     // ------------------------------------------------------------------------
-//     // Frontend
-//     // ------------------------------------------------------------------------
-
-//     dependencies.frontend =
-//         std::make_unique<StereoVIVisualFrontend>(config);
-
-
-//     // ------------------------------------------------------------------------
-//     // Estimator
-//     // ------------------------------------------------------------------------
-
-//     dependencies.estimator =
-//         std::make_unique<OptimizationEstimator>(config);
-
-
-//     // ------------------------------------------------------------------------
-//     // Backend
-//     // ------------------------------------------------------------------------
-
-//     if (config.backend.enabled)
-//     {
-//         dependencies.backend =
-//             std::make_unique<Backend>(
-//                 config,
-//                 dependencies.mapManager);
-//     }
-
-
-//     // ------------------------------------------------------------------------
-//     // Loop Closure
-//     // ------------------------------------------------------------------------
-
-//     if (config.loopClosure.enabled)
-//     {
-//         dependencies.loopClosure =
-//             std::make_unique<LoopClosure>(
-//                 config,
-//                 dependencies.mapManager);
-//     }
-
-
-//     // ------------------------------------------------------------------------
-//     // Visualizer
-//     // ------------------------------------------------------------------------
-
-//     if (config.system.visualizer == VisualizerType::Pangolin)
-//     {
-//         dependencies.visualizer =
-//             std::make_unique<PangolinVisualizer>(config);
-//     }
-
-
-//     // ------------------------------------------------------------------------
-//     // Construct concrete SLAM system
-//     // ------------------------------------------------------------------------
-
-//     return std::make_unique<StereoVISLAMSystem>(
-//         config,
-//         std::move(dependencies));
-// }
+//MULTI VIEW SLAM

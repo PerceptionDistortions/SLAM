@@ -92,7 +92,7 @@ double pixelError(
 } // namespace
 
 MidpointTriangulator::MidpointTriangulator(
-    MidpointTriangulatorConfig config)
+    TriangulationConfig config)
     : config_(config)
 {
     // Invalid configurations are rejected when triangulate() is called.

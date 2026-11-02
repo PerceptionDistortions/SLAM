@@ -496,4 +496,8 @@ Visual Track Management
      Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
 
     
-    
+    Challenges faced in track management:
+    1. Very low number of active tracks even when the number matches were high. Threshold issue in config.
+    2. The active tracks in second frame itself dropped by 60 when only 8 were succesfully triangulated. The fail threshold is 8. 
+        Inliers count was not being updated on promotion from tentative track. Every frame check deleted active track, triangulated, and promoted from tentative.
+    3. Parallax and baseline check was not checking for consecutive active inliers.

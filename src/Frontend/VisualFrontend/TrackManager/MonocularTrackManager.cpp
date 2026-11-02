@@ -159,6 +159,8 @@ void MonocularTrackManager::update(
     std::size_t successfulAssociations = 0;
     std::size_t activePromotions = 0;
 
+    int deletedActiveTracksCount=0;
+
     //FOR ALL OBSERVATIONS, INIT SIZE OF TRACK IDs VECTOR
     currentFeatureTrackIds_.assign(currentCount, TrackId{0});
 
@@ -275,7 +277,9 @@ void MonocularTrackManager::update(
         if (track->getState() == TrackState::Tentative && track->getConsecutiveInliers() >=
                 tentative_max_matches){
                     ++activePromotions;
-                    track->setState(TrackState::Active);}
+                    track->setState(TrackState::Active);
+                    track->setConsecutiveInliers(0);
+                    track->setConsecutiveFailures(0);}
 
         currentFeatureTrackIds_[currentIndex] = trackId;
         currentAssigned[currentIndex] = true;
@@ -283,22 +287,22 @@ void MonocularTrackManager::update(
     }
 
 
-    std::cout
-    << "\n========== TRACK ASSOCIATION DIAGNOSTICS ==========\n"
-    << "Input matches:                 " << matches.size() << '\n'
-    << "Geometric mask passed:         " << maskPassed << '\n'
-    << "Geometric mask rejected:      " << maskRejected << '\n'
-    << "Invalid match indices:        " << invalidMatchIndices << '\n'
-    << "Invalid feature indices:      " << invalidFeatureIndices << '\n'
-    << "Missing previous track IDs:   " << missingTrackIds << '\n'
-    << "Candidate matches:            " << candidateMatches << '\n'
-    << "Duplicate current features:   " << duplicateCurrentFeature << '\n'
-    << "Duplicate tracks:             " << duplicateTrack << '\n'
-    << "Track objects not found:      " << trackNotFound << '\n'
-    << "Observation append failures:  " << appendFailures << '\n'
-    << "Successful associations:     " << successfulAssociations << '\n'
-    << "Promoted to Active:           " << activePromotions << '\n'
-    << "====================================================\n";
+    // std::cout
+    // << "\n========== TRACK ASSOCIATION DIAGNOSTICS ==========\n"
+    // << "Input matches:                 " << matches.size() << '\n'
+    // << "Geometric mask passed:         " << maskPassed << '\n'
+    // << "Geometric mask rejected:      " << maskRejected << '\n'
+    // << "Invalid match indices:        " << invalidMatchIndices << '\n'
+    // << "Invalid feature indices:      " << invalidFeatureIndices << '\n'
+    // << "Missing previous track IDs:   " << missingTrackIds << '\n'
+    // << "Candidate matches:            " << candidateMatches << '\n'
+    // << "Duplicate current features:   " << duplicateCurrentFeature << '\n'
+    // << "Duplicate tracks:             " << duplicateTrack << '\n'
+    // << "Track objects not found:      " << trackNotFound << '\n'
+    // << "Observation append failures:  " << appendFailures << '\n'
+    // << "Successful associations:     " << successfulAssociations << '\n'
+    // << "Promoted to Active:           " << activePromotions << '\n'
+    // << "====================================================\n";
 
     // EXISTING TRACKS MISSED: UPDATE COUNTERS: CHECK IN MAP OF EXISTING TRACKS
     for (auto it = tracks_.begin(); it != tracks_.end();)
@@ -326,7 +330,7 @@ void MonocularTrackManager::update(
         int maxMisses = 0;
         
         //DELETE THE TENTATIVE TRACK
-        //DEMOTE THE ACTIVE TRACK
+        //DELETE THE ACTIVE TRACK
         //DELETE THE TRIANGULATED LOST TRACK
         //DEMOTE THE TRINAGULATE TO LOST
         //DELETE THE TRINAGULATED LOST
@@ -344,6 +348,7 @@ void MonocularTrackManager::update(
             case TrackState::Active:
                 eraseTrack = failures >= active_max_misses ||
                 track.getTrackAge() >= active_max_age;
+                if (eraseTrack) ++deletedActiveTracksCount;
                 break;
 
             case TrackState::Triangulated:
@@ -380,6 +385,10 @@ void MonocularTrackManager::update(
             ++it;
         }
     }
+
+    //LOGS
+    std::cout<<"Active tracks deleted (track management): "<<deletedActiveTracksCount<<std::endl;
+    std::cout<<"Tentative to active promotion (track manager): "<<activePromotions<<std::endl;
 
     // NEW TENTATIVE TRACKS: CHECK WHICH ARE NOT ASSSIGNED
     for (std::size_t i = 0; i < currentCount; ++i)

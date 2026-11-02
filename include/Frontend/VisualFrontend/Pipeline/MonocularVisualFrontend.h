@@ -10,6 +10,8 @@
 #include"Frontend/VisualFrontend/Baseline/MonocularBaselineChecker.h"
 #include"AliasesEnumsTypes/CameraPose.h"
 #include "Configuration/NewConfigs/VisualFrontendConfigs.h"
+#include "Configuration/NewConfigs/TriangulationConfig.h"
+#include"Configuration/NewConfigs/VisualTrackConfig.h"
 
 class MonocularVisualFrontend : public VisualFrontend
 {
@@ -17,6 +19,8 @@ public:
     //CONSTRUCTOR: CALLED BY FACTORY
     MonocularVisualFrontend(
     const VisualFrontendConfigs& config,
+    const TriangulationConfig& triangulationConfig,
+    const VisualTrackConfig& visualTrackConfig,
     const CameraCalibration& cameraCalibration,
     std::unique_ptr<IFeatureDetectorDescriptor> featureDetector,
     std::unique_ptr<IFeatureMatcher> featureMatcher,
@@ -43,10 +47,14 @@ private:
     //FRAME ID COUNTER
     FrameId nextFrameId_{0};
     FrameId prevFrameId_{0};
+
+    //CONFIGURATION FILES
+    const VisualFrontendConfigs& config_;
+    const TriangulationConfig& triangulationConfig_;
+    const VisualTrackConfig trackConfig_;
     
     // CAMERA CALIBRATION PASSED IN CONSRTRUCTOR, Camera Id
     std::string cameraId_;
-    const VisualFrontendConfigs& config_;
     CameraCalibration cameraCalibration_;
     cv::Mat cameraMatrix_;
     cv::Mat distCoeffs_;
@@ -70,7 +78,7 @@ private:
     //PARALLAX AND BASELINE CHECKS
     std::unique_ptr<IParallaxChecker> parallaxChecker_;
     std::unique_ptr<IBaselineChecker> baselineChecker_;
-
+    
     //LANDMARK ID COUNTER
     LandmarkId nextLandmarkId_{0};
 
