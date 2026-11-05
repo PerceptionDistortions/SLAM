@@ -112,14 +112,14 @@ TriangulationResult MidpointTriangulator::triangulate(
 
     if (!isValidPixel(first.pixel) ||
         !isValidPixel(second.pixel) ||
-        !std::isfinite(config_.minParallaxDegrees) ||
+        // !std::isfinite(config_.minParallaxDegrees) ||
         !std::isfinite(config_.minBaseline) ||
         !std::isfinite(config_.maxReprojectionErrorPixels) ||
         !std::isfinite(config_.maxRaySeparation) ||
         !std::isfinite(config_.minDepth) ||
         !std::isfinite(config_.geometryEpsilon) ||
-        config_.minParallaxDegrees < 0.0 ||
-        config_.minParallaxDegrees >= 90.0 ||
+        // config_.minParallaxDegrees < 0.0 ||
+        // config_.minParallaxDegrees >= 90.0 ||
         config_.minBaseline < 0.0 ||
         config_.maxReprojectionErrorPixels < 0.0 ||
         config_.maxRaySeparation < 0.0 ||
@@ -193,11 +193,11 @@ TriangulationResult MidpointTriangulator::triangulate(
     result.parallaxDegrees =
         std::acos(cosine) * 180.0 / std::acos(-1.0);
 
-    if (!std::isfinite(result.parallaxDegrees) ||
-        result.parallaxDegrees < config_.minParallaxDegrees)
-    {
-        return fail(TriangulationFailure::InsufficientParallax);
-    }
+    // if (!std::isfinite(result.parallaxDegrees) ||
+    //     result.parallaxDegrees < config_.minParallaxDegrees)
+    // {
+    //     return fail(TriangulationFailure::InsufficientParallax);
+    // }
 
     // Find the closest points on:
     // P1(s) = C1 + s*d1

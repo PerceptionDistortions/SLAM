@@ -387,8 +387,8 @@ void MonocularTrackManager::update(
     }
 
     //LOGS
-    std::cout<<"Active tracks deleted (track management): "<<deletedActiveTracksCount<<std::endl;
-    std::cout<<"Tentative to active promotion (track manager): "<<activePromotions<<std::endl;
+    // std::cout<<"Active tracks deleted (track management): "<<deletedActiveTracksCount<<std::endl;
+    // std::cout<<"Tentative to active promotion (track manager): "<<activePromotions<<std::endl;
 
     // NEW TENTATIVE TRACKS: CHECK WHICH ARE NOT ASSSIGNED
     for (std::size_t i = 0; i < currentCount; ++i)
@@ -400,6 +400,11 @@ void MonocularTrackManager::update(
     // Preserve feature-index alignment for the next frame.
     previousFeatureTrackIds_ = currentFeatureTrackIds_;
     previousObservations_ = currentObservations;
+
+    std::cout
+        << "Tentative tracks: "<< getTrackIds(TrackState::Tentative).size()
+        << "\nActive tracks (deleted "<<deletedActiveTracksCount<<", promoted from tentative "
+        <<activePromotions<<"): "<< getTrackIds(TrackState::Active).size()<< std::endl;
 
     //REMOVE UNSTABLE TENTATIVE AND ACTIVE TRACKS
     prune();
@@ -418,6 +423,8 @@ bool MonocularTrackManager::markTriangulated(TrackId trackId)
     }
 
     track->setState(TrackState::Triangulated);
+    track->setConsecutiveFailures(0);
+    track->setConsecutiveInliers(0);
 
     return true;
 }
@@ -451,29 +458,24 @@ void MonocularTrackManager::prune()
     {
         if (!it->second)
         {
-            ++it;
+            it = tracks_.erase(it);
             continue;
         }
 
-        const TrackState state = it->second->getState();
-        const int age = it->second->getTrackAge();
+        const auto& track = it->second;
+        const TrackState state = track->getState();
+        const int age = track->getTrackAge();
+        const int failures = track->getConsecutiveFailures();
 
-        const bool pruneTentative =
-            state == TrackState::Tentative &&
-            age >= tentative_max_age;
+        const bool pruneTentative = state == TrackState::Tentative && age >= tentative_max_age;
+        const bool pruneActive = state == TrackState::Active && age >= active_max_age;
+        const bool pruneTriangulatedLost = state == TrackState::Triangulated_Lost && failures >= triangulated_lost_max_miss;
+        const bool pruneLandmarkLost = state == TrackState::Landmark_Lost && failures >= landmark_lost_max_miss;
 
-        const bool pruneActive =
-            state == TrackState::Active &&
-            age >= active_max_age;
-
-        if (pruneTentative || pruneActive)
-        {
+        if (pruneTentative || pruneActive || pruneTriangulatedLost || pruneLandmarkLost)
             it = tracks_.erase(it);
-        }
         else
-        {
             ++it;
-        }
     }
 }
 

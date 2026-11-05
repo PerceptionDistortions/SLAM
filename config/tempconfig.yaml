@@ -118,6 +118,7 @@ track_management:
   triangulated_max_observations: 20
   triangulated_max_matches: 2
   triangultaed_max_miss: 3
+  triangulated_max_correspondece_mismatch: 1
   
   triangulated_lost_max_miss: 5
   triangulated_lost_max_match: 2

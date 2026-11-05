@@ -15,6 +15,7 @@ struct VisualTrackConfig{
     int triangulated_max_observations{20};
     int triangulated_max_matches{2};
     int triangulated_max_misses{3};
+    int triangulated_max_correspondences_mismatch{1};
 
     //TRIANGULATED LOST TRACKS
     int triangulated_lost_max_miss{5};

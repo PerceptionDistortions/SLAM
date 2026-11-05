@@ -1,5 +1,7 @@
 #pragma once
 
+#include<unordered_set>
+
 #include "Frontend/VisualFrontend/Pipeline/VisualFrontend.h"
 #include"Configuration/Configs/SystemConfig.h"
 #include"Configuration/Configs/FrontendConfig.h"
@@ -118,6 +120,10 @@ private:
 
     std::vector<TrackId> parallaxBaselineCheck(FrameId currentFrameId,bool usePnP);
 
+    //TRIANGULATE ALL CANDIDATES
+    void triangulateCandidates(const std::vector<TrackId>& triangulationCandidates,
+        FrameId currentFrameId, std::unordered_set<TrackId>& newlyTriangulatedTracks);
+
     //VALIDATE A NEWLY TRNAGULATED POINT: IS IT GOOD TO CONTINUE?
     [[nodiscard]]
     bool validateTriangulatedPoint(
@@ -126,7 +132,12 @@ private:
         const Eigen::Vector2d& currentPixel,
         const Eigen::Matrix4d& previousTcw,
         const Eigen::Matrix4d& currentTcw,
-        const Eigen::Matrix3d& intrinsicMatrix) const;
+        const Eigen::Matrix3d& intrinsicMatrix,
+        int invalidPointCount,
+        int previousCheiralityFailures,
+        int currentCheiralityFailures,
+        int previousReprojectionFailures,
+        int currentReprojectionFailures) const;
 
     // VALIDATE EXISTING TRIANGULATED TRACK AGAINST CURRENT FRAME
     bool matchTriangulatedFeatures(

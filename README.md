@@ -482,7 +482,7 @@ Visual Track Management
     Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
 4. Triangulated_lost
     No age stored: only consecutive matches or misses
-    If consecutuce macthes: promoted back to triangulated.
+    If consecutuce macthes: promoted back to triangulated. Needs correspondence match, not only feature match.
     If consecutive misses: deleted (not demoetd to active).
     Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
 5. Landmark
@@ -498,6 +498,31 @@ Visual Track Management
     
     Challenges faced in track management:
     1. Very low number of active tracks even when the number matches were high. Threshold issue in config.
-    2. The active tracks in second frame itself dropped by 60 when only 8 were succesfully triangulated. The fail threshold is 8. 
-        Inliers count was not being updated on promotion from tentative track. Every frame check deleted active track, triangulated, and promoted from tentative.
+    2. The active tracks in second frame itself dropped by 60 when only 8 were succesfully triangulated. The fail threshold is 8. Inliers count was not being updated on promotion from tentative track. Every frame check deleted active track, triangulated, and promoted from tentative.
     3. Parallax and baseline check was not checking for consecutive active inliers.
+
+    Failure modes
+    1. Scale ambiguity in monocular SLAM.
+    2. Degenerate camera motion.
+    3. Low parallax and poor triangulation.
+    4. Feature tracking degradation.
+    5. Incorrect pose estimation.
+    6. Covariance inconsistency and estimator divergence.
+
+    Performances
+    1. Real-time processing constraints.
+    2. CPU and memory profiling.
+    3. Multithreading and synchronization.
+    4. Embedded/ARM optimization.
+    5. Processing latency and throughput.
+
+Challenges faced
+1. 100 triangulation candidates, triangulated, 0 passed valdiation: The parallax checks in triangulation and initial parallax check thresholds are diff.
+2. Parallax : Baseline not to be used without pnp, arbitrary and normalized scale
+3. Parallax threshold relaxation brings better results
+4. Checked low trigulation candidates with ground truth pose comparison: relevant
+5. Parallax: Do not check parallax from previous frame but from the last keyframe of current track
+1. Motion gating: Ratio in pnp was being checked wuith all descriptors instead of only landmark
+
+
+    

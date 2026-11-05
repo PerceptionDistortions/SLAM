@@ -454,9 +454,11 @@ VisualTrackConfig NewConfigLoader::parseVisualTracks(
     // Accept the corrected key and the previous YAML typo.
     config.triangulated_max_misses = readOrDefault(
         node, "triangulated_max_misses",
-        readOrDefault(
-            node, "triangultaed_max_miss",
-            config.triangulated_max_misses));
+            config.triangulated_max_misses);
+
+    config.triangulated_max_correspondences_mismatch = readOrDefault(
+        node, "triangulated_max_correspondece_mismatch",
+            config.triangulated_max_correspondences_mismatch);
 
     // TRIANGULATED LOST TRACKS
     config.triangulated_lost_max_miss = readOrDefault(

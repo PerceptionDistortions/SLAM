@@ -130,17 +130,20 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
 
     
     //PIXEL MATCHING BETWEEN FRAMES, USE DMATCH RESULTS
+    //USED BY E-RANSAC
     std::vector<cv::Point2f> points1;
     std::vector<cv::Point2f> points2;
     std::vector<cv::DMatch> validMatches;
     buildValidCorrespondences(points1, points2, validMatches);
 
+    //---------------------------------------------------------------------------
 
     //COUNT LANDMARKS AND DECIDE BETWEEN ESSENTIAL MATRIC VS RANSAC
     //IF E: NO BASELINE CHECK WITH NORMALIZED ARBITRARY SCALE
     std::cout<<"Landmarks count: "<<mapManager_.getLandmarkCount()<<std::endl;// SELECT POSE ESTIMATION METHOD BASED ON MAP LANDMARK COUNT
     const bool usePnP = mapManager_.getLandmarkCount() >= 20;
 
+    //---------------------------------------------------------------------------
 
     //DEFINE VARS REQUIRED FOR ESSENTIAL+RECOVER POSE
     cv::Mat essentialMatrix; //RESULT: GEOMETRY BETWEEN 2 FRAMES
@@ -155,6 +158,8 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     PnPResult pnpResult;
     std::vector<cv::Point3f> objectPoints;
     std::vector<cv::Point2f> imagePoints;
+
+    //---------------------------------------------------------------------------
 
     //RANSAC: E+RECOVER POSE or PNP BASED ON NUMBER OF LANDMARKS
     if (!estimateFramePose(
@@ -209,37 +214,42 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     {
         return nullptr;
     }
-    //CHALLENGES FACED IN MOTION GATING
-    //1. Ratio in pnp was being checked wuith all descriptors instead of only landmark
 
+    //-------------------------------------------------------------------------------------
 
     //PARALLAX AND BASELINE CHECKS FOR TRACKS: GET TRIANGULATION CANDIDATES
-    //DOES NOT DISCARD FRAME, KEYFRAME, NO DEMOTION OF TRACKS
-    //MUST SATISFY ACTIVE TRACK MAX MATCH COUNT
+    //DOES NOT DISCARD FRAME, KEYFRAME, NO DEMOTION OF TRACKS, ACTIVE TRACKS MAX MATCH CHECK
     const std::vector<TrackId> triangulationCandidates =parallaxBaselineCheck(currentFrameId, usePnP);
-    std::cout << "Triangulation candidates (parallax, baseline, active max match check): "<< triangulationCandidates.size() << std::endl;
-    //CHALLENGES FACED IN PARALLEX AND BASELINE
-    //1. Baseline not to be used without pnp, arbitrary and normalized scale
-    //2. Parallax threshold relaxation brings better results
-    //3. Checked low trigulation candidates with ground truth pose comparison: relevant
+    std::cout << "Triangulation candidates (parallax, baseline, active max match check): "
+    << triangulationCandidates.size() << std::endl;
     //4. Do not check parallax from previous frame but from the last keyframe of current track. TODO
     
     
-    
+    //---------------------------------------------------------------------------------------
+
     //POSE ONLY REFINEMENT: MINIMIZE THE REPROJECTION ERROR: TODO
     //AT LEAST 20 CORRESPONCECES BETWEN FEATURES AND LANDMARKS
 
+    //---------------------------------------------------------------------------------------
 
-    //TRIANGULATION: ONLY FOR PARALLAX AND BASELINE (IF PNP) SUCCESS TRACKS
-    //TRACK STATE: ACTIVE ONLY, NO TENTATIVE
-    //NO LANDMARK SHOULD BE PREVIOUS FORMED FOR TRACK
-    //NUMBER OF OBSERVATIONS: 3
-    //CHECK IF THE POINT IS ALREADY TRIANGULATED
+
+    //TRIANGULATION (CANDIDATE TRACK ONLY OPERATION): BASED ON PARALLAX AND BASELINE CHECKS
+    //ONLY SELECTED ACTIVE TRACKS THAT CAN BE PROMOTED
+    //VALIDATION ALSO DONE OF TRIANGULATION: IF SUCCESS KEEP
+
     MidpointTriangulator triangulator(triangulationConfig_);
     Eigen::Matrix3d intrinsicMatrix;
     intrinsicMatrix << cameraCalibration_.fx, 0.0, cameraCalibration_.cx,
                        0.0, cameraCalibration_.fy, cameraCalibration_.cy,
                        0.0, 0.0, 1.0;
+
+    //Logs
+    int triangulationInvalidCount=0;
+    int invalidPointCount=0;
+    int previousCheiralityFailures=0;
+    int currentCheiralityFailures=0;
+    int previousReprojectionFailures=0;
+    int currentReprojectionFailures=0;
 
     const auto makeWorldToCamera = [](const CameraPose& pose)
     {
@@ -287,7 +297,11 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         second.K = intrinsicMatrix;
 
         const TriangulationResult result = triangulator.triangulate(first, second);
-        if (!result.valid()) continue;
+        // std::cout << "Triangulation failure: " << static_cast<int>(result.failure) << '\n';
+        if (!result.valid()){
+            ++triangulationInvalidCount;
+            continue;
+        }
 
         //VALIDATE THE TRIANGULATION
         //REPROJECTION ERROR IN CURRENT FRAME AND PREV FRAME
@@ -308,7 +322,12 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         currentPixel,
         previousTcw,
         currentTcw,
-        intrinsicMatrix))
+        intrinsicMatrix,
+        invalidPointCount,
+        previousCheiralityFailures,
+        currentCheiralityFailures,
+        previousReprojectionFailures,
+        currentReprojectionFailures))
         {
             //std::cout<<"Triangulation init failed for track."<<std::endl;
             continue;
@@ -326,11 +345,22 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         newlyTriangulatedTracks.insert(trackId);
         ++triangulatedTracks;
     }
+    // std::cout<< " Invalid results=" << triangulationInvalidCount<<std::endl;
+
+    std::cout << "[Triangulation Debug]"
+          << " Invalid points=" << invalidPointCount
+          << " Previous cheirality=" << previousCheiralityFailures
+          << " Current cheirality=" << currentCheiralityFailures
+          << " Previous reprojection=" << previousReprojectionFailures
+          << " Current reprojection=" << currentReprojectionFailures
+          << std::endl;
+
     //CHALLENGES FACED IN TRIANGULATION
     //1. Segmentation fault: core dumped, very large number of landmarks
     //2. The triangulated point values for same feature point varies largely across each iteration.
     //This is because no landmark was present in the map manager.
     //Check that the point is already triangulated and skip
+    //100 candidates and all failed
 
     // KEYFRAME DETERMINATION
     // NUMBER OF SUCCESSFUL VALIDATED TRIANGULATED POINTS
@@ -350,7 +380,7 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
 
         if (mapManager_.addKeyframe(keyframe))
         {
-            std::cout << "KEYFRAME accepted by map mamager: "<< currentFrameId << std::endl;
+            std::cout << "KEYFRAME accepted by map manager: "<< currentFrameId << std::endl;
         }
         else{
             std::cout<<"Map manager rejected track."<<std::endl;
@@ -364,17 +394,116 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //1. All frames are being changed to keyframes
     //2. Do not rely in total candidates but realized landmarks
 
-    // CHECK FOR TRIANGULATED POINTS
-    // MIN CONSECUTIVE INLIERS: 3, MIN FAILURES: 1
+    //-----------------------------------------------------------------------------------
+
+    // LANDMARK DETERMINATION AND LOST TRIANGULATED TRACKS RECOVERY
+    // CHECK TRIANGULATED AND LOST TRIANGULATED TRACKS ONLY
+    // for (const TrackId trackId : trackManager_->getTrackIds())
+    // {
+    //     IFeatureTrack* track = trackManager_->getTrack(trackId);
+    //     if (track == nullptr ||track->getState() != TrackState::Triangulated)
+    //     {
+    //         continue;
+    //     }
+
+    //     // Find the track's feature in the current frame.
+    //     const FeatureObservation* currentObservation = nullptr;
+
+    //     for (const auto& observation : track->getObservations())
+    //     {
+    //         if (observation.cameraId == cameraId_ && observation.frameId == currentFrameId)
+    //         {
+    //             currentObservation = &observation;
+    //             break;
+    //         }
+    //     }
+
+    //     // No current-frame feature: do not validate or update counters.
+    //     if (currentObservation == nullptr) continue;
+    //     if (newlyTriangulatedTracks.count(trackId) > 0) continue;
+
+    //     // Newly triangulated tracks have no later-frame observation yet.
+    //     // if (track->getLastFrameId() == currentFrameId) continue;
+
+    //     const auto& pointWorld = track->getTriangulatedPointWorld();
+
+    //     if (!pointWorld.has_value())
+    //     {
+    //         track->clearTriangulatedPointWorld();
+    //         track->setState(TrackState::Active);
+    //         continue;
+    //     }
+
+    //     const bool inlier = matchTriangulatedFeatures(
+    //         *pointWorld,
+    //         *currentObservation,
+    //         currentTcw,
+    //         intrinsicMatrix);
+
+    //     if (inlier)
+    //     {
+    //         track->setConsecutiveInliers(
+    //             track->getConsecutiveInliers() + 1);
+
+    //         track->setConsecutiveFailures(0);
+
+    //         if (track->getConsecutiveInliers() >= 3)
+    //         {
+    //             const LandmarkId landmarkId = nextLandmarkId_++;
+
+    //             auto landmark = std::make_shared<Landmark>(
+    //                 landmarkId,
+    //                 *pointWorld);
+
+    //             if (mapManager_.addLandmark(landmark))
+    //             {
+    //                 track->setLandmarkId(landmarkId);
+    //                 track->clearTriangulatedPointWorld();
+    //                 track->setState(TrackState::Landmark);
+
+    //                 // std::cout
+    //                 //     << "[Triangulated -> Landmark] Track="
+    //                 //     << trackId
+    //                 //     << " Landmark=" << landmarkId
+    //                 //     << std::endl;
+    //             }
+    //         }
+    //     }
+    //     else
+    //     {
+    //         track->setConsecutiveFailures(
+    //             track->getConsecutiveFailures() + 1);
+
+    //         track->setConsecutiveInliers(0);
+
+    //         if (track->getConsecutiveFailures() >= 1)
+    //         {
+    //             track->clearTriangulatedPointWorld();
+    //             track->setState(TrackState::Active);
+    //         }
+    //     }
+    // }
+
+    // LANDMARK DETERMINATION AND TRIANGULATED TRACK RECOVERY
     for (const TrackId trackId : trackManager_->getTrackIds())
     {
         IFeatureTrack* track = trackManager_->getTrack(trackId);
-        if (track == nullptr ||track->getState() != TrackState::Triangulated)
+        if (track == nullptr) continue;
+
+        const TrackState state = track->getState();
+        if (state != TrackState::Triangulated && state != TrackState::Triangulated_Lost) continue;
+        if (newlyTriangulatedTracks.count(trackId) > 0) continue;
+
+        const auto& pointWorld = track->getTriangulatedPointWorld();
+
+        if (!pointWorld.has_value())
         {
+            track->clearTriangulatedPointWorld();
+            if (state == TrackState::Triangulated)
+                track->setState(TrackState::Active);
             continue;
         }
 
-        // Find the track's feature in the current frame.
         const FeatureObservation* currentObservation = nullptr;
 
         for (const auto& observation : track->getObservations())
@@ -386,76 +515,57 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
             }
         }
 
-        // No current-frame feature: do not validate or update counters.
+        // Missing observations are handled by MonocularTrackManager::update().
         if (currentObservation == nullptr) continue;
-        if (newlyTriangulatedTracks.count(trackId) > 0) continue;
 
-        // Newly triangulated tracks have no later-frame observation yet.
-        // if (track->getLastFrameId() == currentFrameId) continue;
-
-        const auto& pointWorld = track->getTriangulatedPointWorld();
-
-        if (!pointWorld.has_value())
-        {
-            track->clearTriangulatedPointWorld();
-            track->setState(TrackState::Active);
-            continue;
-        }
-
-        const bool inlier = matchTriangulatedFeatures(
-            *pointWorld,
-            *currentObservation,
-            currentTcw,
-            intrinsicMatrix);
+        const bool inlier = matchTriangulatedFeatures(*pointWorld, *currentObservation, currentTcw, intrinsicMatrix);
 
         if (inlier)
         {
-            track->setConsecutiveInliers(
-                track->getConsecutiveInliers() + 1);
-
+            track->setConsecutiveInliers(track->getConsecutiveInliers() + 1);
             track->setConsecutiveFailures(0);
 
-            if (track->getConsecutiveInliers() >= 3)
+            if (state == TrackState::Triangulated_Lost)
+            {
+                if (track->getConsecutiveInliers() >= trackConfig_.triangulated_lost_max_match)
+                {
+                    track->setState(TrackState::Triangulated);
+                    track->setConsecutiveInliers(0);
+                    track->setConsecutiveFailures(0);
+                }
+            }
+            else if (track->getConsecutiveInliers() >= trackConfig_.triangulated_max_matches)
             {
                 const LandmarkId landmarkId = nextLandmarkId_++;
-
-                auto landmark = std::make_shared<Landmark>(
-                    landmarkId,
-                    *pointWorld);
+                auto landmark = std::make_shared<Landmark>(landmarkId, *pointWorld);
 
                 if (mapManager_.addLandmark(landmark))
                 {
                     track->setLandmarkId(landmarkId);
                     track->clearTriangulatedPointWorld();
                     track->setState(TrackState::Landmark);
-
-                    // std::cout
-                    //     << "[Triangulated -> Landmark] Track="
-                    //     << trackId
-                    //     << " Landmark=" << landmarkId
-                    //     << std::endl;
                 }
             }
         }
         else
         {
-            track->setConsecutiveFailures(
-                track->getConsecutiveFailures() + 1);
-
+            track->setConsecutiveFailures(track->getConsecutiveFailures() + 1);
             track->setConsecutiveInliers(0);
 
-            if (track->getConsecutiveFailures() >= 1)
+            if (state == TrackState::Triangulated &&
+                track->getConsecutiveFailures() >= trackConfig_.triangulated_max_correspondences_mismatch)
+            {
+                track->setState(TrackState::Triangulated_Lost);
+            }
+            else if (state == TrackState::Triangulated_Lost &&
+                    track->getConsecutiveFailures() >= trackConfig_.triangulated_lost_max_miss)
             {
                 track->clearTriangulatedPointWorld();
-                track->setState(TrackState::Active);
             }
         }
     }
 
-    //CHECK FOR LANDMARKS
-
-
-    //DECIDE LANDMARKS
+    trackManager_->prune();
 
 
     //UPDATE PREV FRAME DATA
@@ -502,13 +612,9 @@ bool MonocularVisualFrontend::preprocessImage(const MonocularFrame& frame,
     }
 
     // 3. Convert to grayscale directly into output
-    if (!convertToGrayscale(
-            undistortedImage,
-            processedImage))
+    if (!convertToGrayscale(undistortedImage,processedImage))
     {
-        std::cerr << "MonocularVisualFrontend: "
-                     "Failed to convert image to grayscale."
-                  << std::endl;
+        std::cerr <<"Failed to convert image to grayscale."<< std::endl;
         return false;
     }
 
@@ -543,14 +649,9 @@ void MonocularVisualFrontend::initializeCalibration()
     // --------------------------------------------------
 
     distCoeffs_ = cv::Mat(
-        1,
-        static_cast<int>(cameraCalibration_.distortion.size()),
-        CV_64F
-    );
+        1,static_cast<int>(cameraCalibration_.distortion.size()),CV_64F);
 
-    for (size_t i = 0;
-         i < cameraCalibration_.distortion.size();
-         ++i)
+    for (size_t i = 0;i < cameraCalibration_.distortion.size();++i)
     {
         distCoeffs_.at<double>(0, static_cast<int>(i)) =
             cameraCalibration_.distortion[i];
@@ -885,13 +986,6 @@ MonocularVisualFrontend::initialTrackUpdate(
         validMatches,
         geometricInlierMask);
 
-    // Print track statistics.
-    std::cout
-        << "Total tracks: " << trackManager_->getTrackIds().size()
-        << "\nTentative tracks: "<< trackManager_->getTrackIds(TrackState::Tentative).size()
-        << "\nActive tracks: "<< trackManager_->getTrackIds(TrackState::Active).size()
-        << std::endl;
-
     return geometricInlierMask;
 }
 
@@ -1080,6 +1174,37 @@ MonocularVisualFrontend::parallaxBaselineCheck(FrameId currentFrameId, bool useP
     return triangulationCandidates;
 }
 
+//TRIANGULATE ALL CANDIDATES
+void MonocularVisualFrontend::triangulateCandidates(
+    const std::vector<TrackId>& triangulationCandidates,
+    FrameId currentFrameId,
+    std::unordered_set<TrackId>& newlyTriangulatedTracks)
+{
+    MidpointTriangulator triangulator(triangulationConfig_);
+    Eigen::Matrix3d intrinsicMatrix;
+    intrinsicMatrix << cameraCalibration_.fx, 0.0, cameraCalibration_.cx,
+                       0.0, cameraCalibration_.fy, cameraCalibration_.cy,
+                       0.0, 0.0, 1.0;
+
+    //Logs
+    int triangulationInvalidCount=0;
+    int invalidPointCount=0;
+    int previousCheiralityFailures=0;
+    int currentCheiralityFailures=0;
+    int previousReprojectionFailures=0;
+    int currentReprojectionFailures=0;
+
+    const auto makeWorldToCamera = [](const CameraPose& pose)
+    {
+        Eigen::Matrix4d Tcw = Eigen::Matrix4d::Identity();
+        const Eigen::Matrix3d Rcw = pose.worldFromCameraRotation.transpose();
+        Tcw.block<3, 3>(0, 0) = Rcw;
+        Tcw.block<3, 1>(0, 3) = -Rcw * pose.positionWorld;
+        return Tcw;
+    };
+
+}
+
 //VALIDATE A TRIANGULATED POINT
 bool MonocularVisualFrontend::validateTriangulatedPoint(
     const Eigen::Vector3d& pointWorld,
@@ -1087,18 +1212,23 @@ bool MonocularVisualFrontend::validateTriangulatedPoint(
     const Eigen::Vector2d& currentPixel,
     const Eigen::Matrix4d& previousTcw,
     const Eigen::Matrix4d& currentTcw,
-    const Eigen::Matrix3d& intrinsicMatrix) const
+    const Eigen::Matrix3d& intrinsicMatrix,
+    int invalidPointCount,
+    int previousCheiralityFailures,
+    int currentCheiralityFailures,
+    int previousReprojectionFailures,
+    int currentReprojectionFailures
+    ) const
 {
     // 1. Numerical validity and configured 3D bounds.
-    if (!isPointValid(pointWorld))
-        return false;
-
-    // 2. Cheirality in both observing frames.
-    if (!isPointInFrontOfCamera(pointWorld, previousTcw) ||
-        !isPointInFrontOfCamera(pointWorld, currentTcw))
-    {
+    if (!isPointValid(pointWorld)){
+        ++invalidPointCount;
         return false;
     }
+
+    // 2. Cheirality in both observing frames.
+    if (!isPointInFrontOfCamera(pointWorld, previousTcw)) { ++previousCheiralityFailures; return false; }
+    if (!isPointInFrontOfCamera(pointWorld, currentTcw)) { ++currentCheiralityFailures; return false; }
 
     // 3. Reprojection error in both observing frames.
     const double previousError = computeReprojectionError(
@@ -1113,11 +1243,8 @@ bool MonocularVisualFrontend::validateTriangulatedPoint(
         currentTcw,
         intrinsicMatrix);
 
-    if (previousError > maxTriangulationReprojectionErrorPixels_ ||
-        currentError > maxTriangulationReprojectionErrorPixels_)
-    {
-        return false;
-    }
+    if (previousError > maxTriangulationReprojectionErrorPixels_) { ++previousReprojectionFailures; return false; }
+    if (currentError > maxTriangulationReprojectionErrorPixels_) { ++currentReprojectionFailures; return false; }
 
     return true;
 }
