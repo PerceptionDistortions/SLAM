@@ -160,6 +160,8 @@ void MonocularTrackManager::update(
     std::size_t activePromotions = 0;
 
     int deletedActiveTracksCount=0;
+    std::size_t newTentativeTracksCount = 0;
+    int deletedTentativeTracksCount = 0;
 
     //FOR ALL OBSERVATIONS, INIT SIZE OF TRACK IDs VECTOR
     currentFeatureTrackIds_.assign(currentCount, TrackId{0});
@@ -343,6 +345,7 @@ void MonocularTrackManager::update(
             case TrackState::Tentative:
                 eraseTrack = failures >= tentative_max_misses ||
                 track.getTrackAge() >= tentative_max_age;
+                if (eraseTrack) ++deletedTentativeTracksCount;
                 break;
 
             case TrackState::Active:
@@ -395,14 +398,23 @@ void MonocularTrackManager::update(
     {
         if (currentAssigned[i]) continue;
         currentFeatureTrackIds_[i] = createTrack(currentObservations[i]);
+        ++newTentativeTracksCount;
     }
 
     // Preserve feature-index alignment for the next frame.
     previousFeatureTrackIds_ = currentFeatureTrackIds_;
     previousObservations_ = currentObservations;
 
+    std::size_t rejectedAssociations = missingTrackIds + duplicateCurrentFeature + 
+    duplicateTrack + trackNotFound + appendFailures;
+
+    std::cout<<"Matches rejected by track manager: "<<rejectedAssociations<<std::endl;
+
     std::cout
-        << "Tentative tracks: "<< getTrackIds(TrackState::Tentative).size()
+        << "Tentative tracks(deleted: "<<deletedTentativeTracksCount<<", new: "
+        <<newTentativeTracksCount<<"): "<<
+        getTrackIds(TrackState::Tentative).size()
+
         << "\nActive tracks (deleted "<<deletedActiveTracksCount<<", promoted from tentative "
         <<activePromotions<<"): "<< getTrackIds(TrackState::Active).size()<< std::endl;
 

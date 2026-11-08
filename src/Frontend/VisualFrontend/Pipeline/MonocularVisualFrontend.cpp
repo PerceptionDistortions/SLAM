@@ -347,13 +347,13 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     }
     // std::cout<< " Invalid results=" << triangulationInvalidCount<<std::endl;
 
-    std::cout << "[Triangulation Debug]"
-          << " Invalid points=" << invalidPointCount
-          << " Previous cheirality=" << previousCheiralityFailures
-          << " Current cheirality=" << currentCheiralityFailures
-          << " Previous reprojection=" << previousReprojectionFailures
-          << " Current reprojection=" << currentReprojectionFailures
-          << std::endl;
+    // std::cout << "[Triangulation Debug]"
+    //       << " Invalid points=" << invalidPointCount
+    //       << " Previous cheirality=" << previousCheiralityFailures
+    //       << " Current cheirality=" << currentCheiralityFailures
+    //       << " Previous reprojection=" << previousReprojectionFailures
+    //       << " Current reprojection=" << currentReprojectionFailures
+    //       << std::endl;
 
     //CHALLENGES FACED IN TRIANGULATION
     //1. Segmentation fault: core dumped, very large number of landmarks
@@ -395,94 +395,6 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     //2. Do not rely in total candidates but realized landmarks
 
     //-----------------------------------------------------------------------------------
-
-    // LANDMARK DETERMINATION AND LOST TRIANGULATED TRACKS RECOVERY
-    // CHECK TRIANGULATED AND LOST TRIANGULATED TRACKS ONLY
-    // for (const TrackId trackId : trackManager_->getTrackIds())
-    // {
-    //     IFeatureTrack* track = trackManager_->getTrack(trackId);
-    //     if (track == nullptr ||track->getState() != TrackState::Triangulated)
-    //     {
-    //         continue;
-    //     }
-
-    //     // Find the track's feature in the current frame.
-    //     const FeatureObservation* currentObservation = nullptr;
-
-    //     for (const auto& observation : track->getObservations())
-    //     {
-    //         if (observation.cameraId == cameraId_ && observation.frameId == currentFrameId)
-    //         {
-    //             currentObservation = &observation;
-    //             break;
-    //         }
-    //     }
-
-    //     // No current-frame feature: do not validate or update counters.
-    //     if (currentObservation == nullptr) continue;
-    //     if (newlyTriangulatedTracks.count(trackId) > 0) continue;
-
-    //     // Newly triangulated tracks have no later-frame observation yet.
-    //     // if (track->getLastFrameId() == currentFrameId) continue;
-
-    //     const auto& pointWorld = track->getTriangulatedPointWorld();
-
-    //     if (!pointWorld.has_value())
-    //     {
-    //         track->clearTriangulatedPointWorld();
-    //         track->setState(TrackState::Active);
-    //         continue;
-    //     }
-
-    //     const bool inlier = matchTriangulatedFeatures(
-    //         *pointWorld,
-    //         *currentObservation,
-    //         currentTcw,
-    //         intrinsicMatrix);
-
-    //     if (inlier)
-    //     {
-    //         track->setConsecutiveInliers(
-    //             track->getConsecutiveInliers() + 1);
-
-    //         track->setConsecutiveFailures(0);
-
-    //         if (track->getConsecutiveInliers() >= 3)
-    //         {
-    //             const LandmarkId landmarkId = nextLandmarkId_++;
-
-    //             auto landmark = std::make_shared<Landmark>(
-    //                 landmarkId,
-    //                 *pointWorld);
-
-    //             if (mapManager_.addLandmark(landmark))
-    //             {
-    //                 track->setLandmarkId(landmarkId);
-    //                 track->clearTriangulatedPointWorld();
-    //                 track->setState(TrackState::Landmark);
-
-    //                 // std::cout
-    //                 //     << "[Triangulated -> Landmark] Track="
-    //                 //     << trackId
-    //                 //     << " Landmark=" << landmarkId
-    //                 //     << std::endl;
-    //             }
-    //         }
-    //     }
-    //     else
-    //     {
-    //         track->setConsecutiveFailures(
-    //             track->getConsecutiveFailures() + 1);
-
-    //         track->setConsecutiveInliers(0);
-
-    //         if (track->getConsecutiveFailures() >= 1)
-    //         {
-    //             track->clearTriangulatedPointWorld();
-    //             track->setState(TrackState::Active);
-    //         }
-    //     }
-    // }
 
     // LANDMARK DETERMINATION AND TRIANGULATED TRACK RECOVERY
     for (const TrackId trackId : trackManager_->getTrackIds())
