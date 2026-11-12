@@ -6,9 +6,11 @@
 //CONSTRUCTOR
 ESEKF::ESEKF(
     std::unique_ptr<Predictor> predictor,
-    std::unique_ptr<Corrector> corrector)
+    std::unique_ptr<Corrector> corrector,
+    const FilterEstimatorConfig& config)
     : _predictor(std::move(predictor)),
-      _corrector(std::move(corrector))
+      _corrector(std::move(corrector)),
+      _config(config)
 {
     if (!_predictor) throw std::invalid_argument("ErrorStateEKF requires a predictor.");
     if (!_corrector) throw std::invalid_argument("ErrorStateEKF requires a corrector.");
@@ -25,20 +27,14 @@ void ESEKF::initialize(const StateEstimate& initialState)
     //COMPUTED AGAIN IN THE CORRECTION STAGE
     _errorState.reset();
 
-    /*
-        Initial covariance.
+    //P COVARIANCE : INITIAL VALUE BASED ON CONFIGURATION PARAMETERS
+    Eigen::Matrix<double, 15, 15> P = Eigen::Matrix<double, 15, 15>::Zero();
 
-        These values should eventually be configurable.
-    */
-
-    Eigen::Matrix<double, 15, 15> P;
-    P.setZero();
-
-    P.block<3, 3>(0, 0) = 0.1 * 0.1 * Eigen::Matrix3d::Identity();
-    P.block<3, 3>(3, 3) = 0.5 * 0.5 * Eigen::Matrix3d::Identity();
-    P.block<3, 3>(6, 6) = 0.1 * 0.1 * Eigen::Matrix3d::Identity();
-    P.block<3, 3>(9, 9) = 0.01 * 0.01 * Eigen::Matrix3d::Identity();
-    P.block<3, 3>(12, 12) = 0.01 * 0.01 * Eigen::Matrix3d::Identity();
+    P.block<3, 3>(0, 0) = std::pow(_config.position_sd, 2) * Eigen::Matrix3d::Identity();
+    P.block<3, 3>(3, 3) = std::pow(_config.velocity_sd, 2) * Eigen::Matrix3d::Identity();
+    P.block<3, 3>(6, 6) = std::pow(_config.orientation_sd, 2) * Eigen::Matrix3d::Identity();
+    P.block<3, 3>(9, 9) = std::pow(_config.acc_bias_sd, 2) * Eigen::Matrix3d::Identity();
+    P.block<3, 3>(12, 12) = std::pow(_config.gyro_bias_sd, 2) * Eigen::Matrix3d::Identity();
 
     _covariance.set(P);
     _initialized = true;
@@ -84,25 +80,11 @@ void ESEKF::process(const Measurement& measurement)
         measurement.timestamp();
 }
 
-void ESEKF::predict(
-    const Measurement& measurement)
+void ESEKF::predict(const Measurement& measurement)
 {
-    // 1. Propagate nominal state
-    _predictor->predictNominal(_nominalState,measurement);
-
-    // 2. Get model-specific error-state Jacobian
-    const Eigen::MatrixXd F =
-        _predictor->computeF(
-            _nominalState,
-            measurement);
-
-    // 3. Get model-specific process noise
-    const Eigen::MatrixXd Q =
-        _predictor->computeQ(
-            _nominalState,
-            measurement);
-
-    // 4. Propagate covariance
+    const Eigen::MatrixXd F = _predictor->computeF(_nominalState, measurement);
+    const Eigen::MatrixXd Q = _predictor->computeQ(_nominalState, measurement);
+    _predictor->predictNominal(_nominalState, measurement);
     propagateCovariance(F, Q);
 }
 

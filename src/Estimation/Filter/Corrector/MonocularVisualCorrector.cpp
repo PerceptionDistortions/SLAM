@@ -7,10 +7,17 @@
 
 #include <stdexcept>
 
+//NOT TO BE PUT IN CONFIG
+//STRUCTURAL TUNABLE PARAMAS OF ESTIMATOR
 namespace
 {
     constexpr int ErrorStateDimension = 15;
     constexpr int MeasurementDimension = 6;
+}
+
+MonocularVisualCorrector::MonocularVisualCorrector(const FilterEstimatorConfig& config)
+    : _config(config)
+{
 }
 
 Eigen::Vector3d MonocularVisualCorrector::orientationError(
@@ -69,11 +76,7 @@ void MonocularVisualCorrector::correct(
             "unsupported measurement type.");
     }
 
-    Eigen::Matrix<
-        double,
-        MeasurementDimension,
-        ErrorStateDimension> H;
-
+    Eigen::Matrix<double,MeasurementDimension,ErrorStateDimension> H;
     H.setZero();
 
     // Position measurement observes position error.
@@ -82,34 +85,22 @@ void MonocularVisualCorrector::correct(
     // Orientation measurement observes orientation error.
     H.block<3, 3>(3, 6).setIdentity();
 
-    Eigen::Matrix<
-        double,
-        MeasurementDimension,
-        1> residual;
-
-    residual.segment<3>(0) =
-        visualMeasurement->position() -
-        nominalState.position;
+    Eigen::Matrix<double,MeasurementDimension,1> residual;
+    residual.segment<3>(0) =visualMeasurement->position() - nominalState.position;
 
     residual.segment<3>(3) =
         orientationError(
             visualMeasurement->orientation(),
             nominalState.orientation);
 
-    Eigen::Matrix<
-        double,
-        MeasurementDimension,
-        MeasurementDimension> R;
-
+    Eigen::Matrix<double, MeasurementDimension, MeasurementDimension> R;
     R.setZero();
 
-    R.block<3, 3>(0, 0) =
-        0.05 * 0.05 *
-        Eigen::Matrix3d::Identity();
+    R.block<3, 3>(0, 0) = std::pow(_config.visual_position_noise_sd, 2) * 
+    Eigen::Matrix3d::Identity();
 
-    R.block<3, 3>(3, 3) =
-        0.02 * 0.02 *
-        Eigen::Matrix3d::Identity();
+    R.block<3, 3>(3, 3) = std::pow(_config.visual_orientation_noise_sd, 2) * 
+    Eigen::Matrix3d::Identity();
 
     const Eigen::Matrix<
         double,
@@ -229,4 +220,12 @@ void MonocularVisualCorrector::correct(
 
     // RESET ERROR STATE
     errorState.reset();
+}
+
+Eigen::Matrix3d leftJacobianSO3(const Eigen::Vector3d& phi)
+{
+    const double theta = phi.norm();
+    const Eigen::Matrix3d skew = (Eigen::Matrix3d() << 0.0, -phi.z(), phi.y(), phi.z(), 0.0, -phi.x(), -phi.y(), phi.x(), 0.0).finished();
+    if (theta < 1e-6) return Eigen::Matrix3d::Identity() + 0.5 * skew;
+    return Eigen::Matrix3d::Identity() + ((1.0 - std::cos(theta)) / (theta * theta)) * skew + ((theta - std::sin(theta)) / (theta * theta * theta)) * skew * skew;
 }

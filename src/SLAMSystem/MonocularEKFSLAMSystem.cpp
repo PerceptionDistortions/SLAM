@@ -34,7 +34,7 @@ MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
     loop_closure_ = std::move(dependencies.loopClosure);
 }
 
-
+//INITIAL STATE OF ESTIMATOR
 bool MonocularEKFSLAMSystem::init()
 {
     if (initialized_) return true;
@@ -74,108 +74,23 @@ bool MonocularEKFSLAMSystem::init()
 }
 
 //ONE SLAM ITERATION
-// bool MonocularEKFSLAMSystem::update()
-// {
-//     //CHECK INIT AND ATTEMPT POPING FROM BUFFER
-//     if (!initialized_) throw std::runtime_error("Monocular SLAM System not initialized.");
-//     SensorManager::Data data;
-//     if (!sensor_manager_->popNext(data)) return false;
-
-//     //ONLY 1 CAMERA DATA ALLOWED: MONO SLAM
-//     std::visit([this](const auto& sensorData)
-//     {
-//         using T = std::decay_t<decltype(sensorData)>;
-//         if constexpr (std::is_same_v<T, CameraData>)
-//         {
-//             if (sensorData.sensor_id == camera_name_)
-//             {
-//                 std::cout
-//                     << "[CAMERA]"
-//                     << " sensor=" << sensorData.sensor_id
-//                     << " timestamp=" << sensorData.timestamp
-//                     << std::endl;
-//             }
-//         }
-//     },
-//     data);
-
-//     //FOR THE GIVEN SENSOR DATA, PREPROCESS FRONTEND
-//     //VARINAT OF SENSOR DATA DETERMINES WHAT FRONTEND TO CHOOSE
-//     if (!frontend_)
-//     {
-//         std::cout << "Frontend not found" << std::endl;
-//         return false;
-//     }
-
-//     std::unique_ptr<Measurement> measurement;
-
-
-
-//     if (!measurement)
-//     {
-//         std::cout << "Frontend returned null measurement" << std::endl;
-//         return false;
-//     }
-
-
-//     return true;
-    
-
-//     // std::unique_ptr<Measurement> measurement =frontend_->process(data);
-//     // if (!measurement) return;
-
-//     // --------------------------------------------------
-//     // First valid measurement initializes estimator
-//     // --------------------------------------------------
-
-//     // if (!estimator_initialized_)
-//     // {
-//     //     const auto* visualMeasurement =
-//     //         dynamic_cast<const MonocularVisualMeasurement*>(
-//     //             measurement.get());
-
-//     //     if (!visualMeasurement)
-//     //     {
-//     //         throw std::runtime_error(
-//     //             "MonocularEKFSLAMSystem expected "
-//     //             "MonocularVisualMeasurement.");
-//     //     }
-
-//     //     StateEstimate initialState;
-
-//     //     initialState.timestamp =visualMeasurement->timestamp();
-//     //     initialState.position =visualMeasurement->position();
-//     //     initialState.velocity.setZero();
-//     //     initialState.orientation =visualMeasurement->orientation();
-//     //     initialState.accelerometerBias.setZero();
-//     //     initialState.gyroscopeBias.setZero();
-//     //     estimator_->initialize(initialState);
-//     //     estimator_initialized_ = true;
-//     //     return;
-//     // }
-
-//     // // --------------------------------------------------
-//     // // Subsequent measurements
-//     // //
-//     // // MonocularVisualMeasurement:
-//     // // PredictionAndCorrection
-//     // // --------------------------------------------------
-
-//     // estimator_->process(*measurement);
-// }
-
 bool MonocularEKFSLAMSystem::update()
 {
+    //INIT OF SLAM SYSTEM: CHECK
     if (!initialized_) throw std::runtime_error("Monocular SLAM System not initialized.");
+
+    //GET THE NEXT DATA FROM SENSOR BUFFER
     SensorManager::Data data;
     if (!sensor_manager_->popNext(data)) return false;
 
+    //CHECK IF FRONTEND IS DEFINED
     if (!frontend_)
     {
         std::cout << "Frontend not found" << std::endl;
         return false;
     }
 
+    //MEASUREMENT WILL HOLD THE DATA OF THE VISUAL FRONTEND
     std::unique_ptr<Measurement> measurement;
 
     // ONLY CAMERA DATA ALLOWED: MONO SLAM
@@ -212,8 +127,17 @@ bool MonocularEKFSLAMSystem::update()
         // Convert CameraData -> FrontendData
         FrontendData frontendData = convertCameraDataToFrontendData(cameraData);
 
-        // Send converted data to frontend
+        // DATA CONVERTED
         measurement = frontend_->process(frontendData);
+        if (!measurement)
+        {
+            std::cout << "Frontend returned null measurement" << std::endl;
+            return false;
+        }
+        if (!estimator_ || !estimator_initialized_) return false;
+
+        //THE MEASUREMENT TYPE 
+        estimator_->process(*measurement);
     }
     else
     {
@@ -222,11 +146,7 @@ bool MonocularEKFSLAMSystem::update()
     }
 
     //THE RESULTING MEASURMENT IS PASSED TO THE ESTIMATOR: EKF
-    if (!measurement)
-    {
-        std::cout << "Frontend returned null measurement" << std::endl;
-        return false;
-    }
+    
 
     //PASS THE VISUAL FRONTEND DATA TO ESTIMATOR
 

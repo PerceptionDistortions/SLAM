@@ -277,13 +277,14 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfi
         std::make_unique<FrontendManager>(nullptr,std::move(visualFrontend),nullptr);
 
     //ESTIMATOR: RIGID PREDICTOR AND CORRECTOR, AND ESEKF
-    auto predictor = std::make_unique<ConstantVelocityPredictor>();
-    auto corrector =std::make_unique<MonocularVisualCorrector>();
+    auto predictor = std::make_unique<ConstantVelocityPredictor>(config.filterEstimator);
+    auto corrector =std::make_unique<MonocularVisualCorrector>(config.filterEstimator);
 
     dependencies.estimator =
         std::make_unique<ESEKF>(
             std::move(predictor),
-            std::move(corrector));
+            std::move(corrector),
+            config.filterEstimator);
 
     // ---------------------------------------------------------
     // BACKEND

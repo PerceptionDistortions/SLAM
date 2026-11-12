@@ -3,6 +3,7 @@
 #include "Frontend/VisualFrontend/Triangulation/MidpointTriangulator.h"
 #include "Configuration/NewConfigs/VisualFrontendConfigs.h"
 #include"Configuration/NewConfigs/TriangulationConfig.h"
+#include"Estimation/Measurement/MonocularVisualMeasurement.h"
 
 #include <utility>
 #include<iostream>
@@ -486,7 +487,10 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     prevFrameId_ = currentFrameId;
     if (currFramePose_.valid) prevFramePose_ = currFramePose_;
 
-    return nullptr;
+    // return nullptr;
+    return std::make_unique<MonocularVisualMeasurement>
+    (frame->timestamp, currFramePose_.positionWorld,
+        Eigen::Quaterniond(currFramePose_.worldFromCameraRotation));
 }
 
 void MonocularVisualFrontend::shutdown(){

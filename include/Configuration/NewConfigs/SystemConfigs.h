@@ -10,6 +10,7 @@
 #include"Configuration/NewConfigs/TriangulationConfig.h"
 #include"Configuration/NewConfigs/SensorsConfig.h"
 #include"Configuration/NewConfigs/SensorDataSourceConfig.h"
+#include"Configuration/NewConfigs/FilterEstimatorConfig.h"
 
 struct SystemConfigs
 {
@@ -23,4 +24,6 @@ struct SystemConfigs
     PnpConfig pnp;
     TriangulationConfig triangulation;
     LoggerConfig logging;
+
+    FilterEstimatorConfig filterEstimator;
 };

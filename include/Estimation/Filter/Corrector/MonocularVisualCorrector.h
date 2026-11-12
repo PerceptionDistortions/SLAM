@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Estimation/Filter/Corrector/Corrector.h"
+#include "Configuration/NewConfigs/FilterEstimatorConfig.h"
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -8,6 +9,8 @@
 class MonocularVisualCorrector : public Corrector
 {
 public:
+    explicit MonocularVisualCorrector(const FilterEstimatorConfig& config);
+
     void correct(
         NominalState& nominalState,
         ErrorState& errorState,
@@ -15,6 +18,8 @@ public:
         const Measurement& measurement) override;
 
 private:
+    FilterEstimatorConfig _config;
+    
     static Eigen::Vector3d orientationError(
         const Eigen::Quaterniond& measured,
         const Eigen::Quaterniond& estimated);

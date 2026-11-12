@@ -28,4 +28,7 @@ private:
         const std::string& value);
 
     static LoggerConfig parseLogging(const std::string& value);
+
+    static FilterEstimatorConfig parseFilterEstimator(
+        const std::string& value);
 };

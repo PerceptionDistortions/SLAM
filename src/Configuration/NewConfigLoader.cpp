@@ -575,6 +575,53 @@ TriangulationConfig NewConfigLoader::parseTriangulation(
     return config;
 }
 
+//FILTER ESTIMATOR CONFIGURATION
+FilterEstimatorConfig NewConfigLoader::parseFilterEstimator(
+    const std::string& value)
+{
+    const YAML::Node node = loadYamlSection(value);
+
+    FilterEstimatorConfig config;
+
+    //COVARIANCE INIT
+    config.position_sd = readOrDefault(
+        node, "position_sd", config.position_sd);
+
+    config.velocity_sd = readOrDefault(
+        node, "velocity_sd", config.velocity_sd);
+
+    config.orientation_sd = readOrDefault(
+        node, "orientation_sd", config.orientation_sd);
+
+    config.acc_bias_sd = readOrDefault(
+        node, "acc_bias_sd", config.acc_bias_sd);
+
+    config.gyro_bias_sd = readOrDefault(
+        node, "gyro_bias_sd", config.gyro_bias_sd);
+
+    //PROCESS NOISE Q
+    config.acceleration_noise_sd = readOrDefault(
+        node, "acceleration_noise_sd", config.acceleration_noise_sd);
+
+    config.orientation_noise_sd = readOrDefault(
+        node, "orientation_noise_sd", config.orientation_noise_sd);
+
+    config.acc_bias_noise_sd = readOrDefault(   
+        node, "acc_bias_noise_sd", config.acc_bias_noise_sd);
+
+    config.gyro_bias_noise_sd = readOrDefault(
+        node, "gyro_bias_noise_sd", config.gyro_bias_noise_sd);
+
+    //MEASUREMENT NOISE R
+    config.visual_position_noise_sd = readOrDefault(   
+        node, "visual_position_noise_sd", config.visual_position_noise_sd);
+
+    config.visual_orientation_noise_sd = readOrDefault(
+        node, "visual_orientation_noise_sd", config.visual_orientation_noise_sd);
+
+    return config;
+}
+
 // =============================================================
 // LOGGING CONFIGURATION
 // =============================================================
