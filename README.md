@@ -523,6 +523,7 @@ Challenges faced
 4. Checked low trigulation candidates with ground truth pose comparison: relevant
 5. Parallax: Do not check parallax from previous frame but from the last keyframe of current track
 1. Motion gating: Ratio in pnp was being checked wuith all descriptors instead of only landmark
+2. The timestamp of the sensor data and the estimator time and state should be in same units.
 
 
     

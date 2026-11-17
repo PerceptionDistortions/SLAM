@@ -43,12 +43,13 @@ void ESEKF::initialize(const StateEstimate& initialState)
 
 void ESEKF::process(const Measurement& measurement)
 {
-    //INIT CHECK
+    //IS ESEKF INITIALIZED?
     if (!_initialized)
     {
         throw std::runtime_error("ESEKF must be initialized before processing measurements.");
     }
 
+    //TIME STAMP BETWEEN FRAMES
     const double dt =measurement.timestamp() -_nominalState.timestamp;
 
     //TIME GUARD
@@ -57,6 +58,7 @@ void ESEKF::process(const Measurement& measurement)
         throw std::runtime_error("Measurement timestamp is older than estimator state.");
     }
 
+    // CORRECTION OR PREDICTION?
     const auto role = measurement.role();
 
     if (dt > 0.0 &&
@@ -76,8 +78,7 @@ void ESEKF::process(const Measurement& measurement)
             measurement);
     }
 
-    _nominalState.timestamp =
-        measurement.timestamp();
+    _nominalState.timestamp =measurement.timestamp();
 }
 
 void ESEKF::predict(const Measurement& measurement)

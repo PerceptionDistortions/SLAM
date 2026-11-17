@@ -46,14 +46,15 @@ bool MonocularEKFSLAMSystem::init()
     //INIT ESTIMATOR: THE FIRST FRAME IS ORIGIN IN MONOCULAR
     //CREATE AN STATE AND INIT ESTIMATOR, NOT POSSIBLE TO DIRECTLY ASSIGN
     //COVARIANCE NEEDS TO BE INIT, INITIAL UNCETAINTY MATRIX
-    StateEstimate initialState;
-    initialState.timestamp = 0.0;
-    initialState.position = Eigen::Vector3d::Zero();
-    initialState.velocity = Eigen::Vector3d::Zero();
-    initialState.orientation = Eigen::Quaterniond::Identity();
+    //DONE IN UPDATE BECAUSE OF TIMESTAMP COMPATIBILITY
+    // StateEstimate initialState;
+    // initialState.timestamp = 0.0;
+    // initialState.position = Eigen::Vector3d::Zero();
+    // initialState.velocity = Eigen::Vector3d::Zero();
+    // initialState.orientation = Eigen::Quaterniond::Identity();
 
-    estimator_->initialize(initialState);
-    estimator_initialized_ = true;
+    // estimator_->initialize(initialState);
+    // estimator_initialized_ = true;
 
     //INIT FRONTEND
     if(!frontend_->init()) return false;
@@ -76,14 +77,14 @@ bool MonocularEKFSLAMSystem::init()
 //ONE SLAM ITERATION
 bool MonocularEKFSLAMSystem::update()
 {
-    //INIT OF SLAM SYSTEM: CHECK
+    //IS SLAM SYSTEM INITIALIZED?
     if (!initialized_) throw std::runtime_error("Monocular SLAM System not initialized.");
 
-    //GET THE NEXT DATA FROM SENSOR BUFFER
+    //NEXT BUFFER DAT
     SensorManager::Data data;
     if (!sensor_manager_->popNext(data)) return false;
 
-    //CHECK IF FRONTEND IS DEFINED
+    //ID FRONTEND DEFINED? (OWNED BY SYSTEM)
     if (!frontend_)
     {
         std::cout << "Frontend not found" << std::endl;
@@ -100,6 +101,17 @@ bool MonocularEKFSLAMSystem::update()
 
         // Only process the configured camera
         if (cameraData.sensor_id != camera_name_) return false;
+
+        if (!estimator_initialized_)
+        {
+            StateEstimate initialState;
+            initialState.timestamp = static_cast<double>(cameraData.timestamp) * 1e-9;
+            initialState.position = Eigen::Vector3d::Zero();
+            initialState.velocity = Eigen::Vector3d::Zero();
+            initialState.orientation = Eigen::Quaterniond::Identity();
+            estimator_->initialize(initialState);
+            estimator_initialized_ = true;
+        }
 
         // CONTROLLED DATASET PLAYBACK
         if (keyBasedControlledPlayback_)
@@ -136,7 +148,7 @@ bool MonocularEKFSLAMSystem::update()
         }
         if (!estimator_ || !estimator_initialized_) return false;
 
-        //THE MEASUREMENT TYPE 
+        //ESTIMATOR (FILTER) TAKES UP THE TASK
         estimator_->process(*measurement);
     }
     else
@@ -214,12 +226,14 @@ StateEstimate MonocularEKFSLAMSystem::getState() const
     return estimator_->getEstimate();
 }
 
+//THE TIMESTAMO NEEDS TO BE CONVERTED TO FRONTEND DATA
 FrontendData MonocularEKFSLAMSystem::convertCameraDataToFrontendData(
     const CameraData& cameraData) const
 {
     MonocularFrame frame;
 
-    frame.timestamp = cameraData.timestamp;
+    // frame.timestamp = cameraData.timestamp;
+    frame.timestamp = static_cast<double>(cameraData.timestamp) * 1e-9;
     frame.camera.image = cameraData.image;
 
     return frame;

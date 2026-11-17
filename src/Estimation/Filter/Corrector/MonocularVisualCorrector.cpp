@@ -65,15 +65,11 @@ void MonocularVisualCorrector::correct(
     Uncertainty& uncertainty,
     const Measurement& measurement)
 {
-    const auto* visualMeasurement =
-        dynamic_cast<const MonocularVisualMeasurement*>(
-            &measurement);
+    const auto* visualMeasurement =dynamic_cast<const MonocularVisualMeasurement*>(&measurement);
 
     if (!visualMeasurement)
     {
-        throw std::invalid_argument(
-            "MonocularVisualCorrector received "
-            "unsupported measurement type.");
+        throw std::invalid_argument("MonocularVisualCorrector received ""unsupported measurement type.");
     }
 
     Eigen::Matrix<double,MeasurementDimension,ErrorStateDimension> H;
@@ -87,11 +83,7 @@ void MonocularVisualCorrector::correct(
 
     Eigen::Matrix<double,MeasurementDimension,1> residual;
     residual.segment<3>(0) =visualMeasurement->position() - nominalState.position;
-
-    residual.segment<3>(3) =
-        orientationError(
-            visualMeasurement->orientation(),
-            nominalState.orientation);
+    residual.segment<3>(3) =orientationError(visualMeasurement->orientation(),nominalState.orientation);
 
     Eigen::Matrix<double, MeasurementDimension, MeasurementDimension> R;
     R.setZero();
@@ -120,10 +112,7 @@ void MonocularVisualCorrector::correct(
         MeasurementDimension> K =
         P * H.transpose() *
         S.ldlt().solve(
-            Eigen::Matrix<
-                double,
-                MeasurementDimension,
-                MeasurementDimension>::Identity());
+            Eigen::Matrix<double,MeasurementDimension,MeasurementDimension>::Identity());
 
     const Eigen::Matrix<
         double,
@@ -131,26 +120,13 @@ void MonocularVisualCorrector::correct(
         1> deltaX =
         K * residual;
 
-    errorState.positionError =
-        deltaX.segment<3>(0);
-
-    errorState.velocityError =
-        deltaX.segment<3>(3);
-
-    errorState.orientationError =
-        deltaX.segment<3>(6);
-
-    errorState.accelerometerBiasError =
-        deltaX.segment<3>(9);
-
-    errorState.gyroscopeBiasError =
-        deltaX.segment<3>(12);
-
-    nominalState.position +=
-        errorState.positionError;
-
-    nominalState.velocity +=
-        errorState.velocityError;
+    errorState.positionError =deltaX.segment<3>(0);
+    errorState.velocityError =deltaX.segment<3>(3);
+    errorState.orientationError =deltaX.segment<3>(6);
+    errorState.accelerometerBiasError =deltaX.segment<3>(9);
+    errorState.gyroscopeBiasError =deltaX.segment<3>(12);
+    nominalState.position +=errorState.positionError;
+    nominalState.velocity +=errorState.velocityError;
 
     nominalState.orientation =
         applyOrientationError(
@@ -186,8 +162,7 @@ void MonocularVisualCorrector::correct(
     Eigen::Matrix<double, ErrorStateDimension, ErrorStateDimension> G =
         Eigen::Matrix<double, ErrorStateDimension, ErrorStateDimension>::Identity();
 
-    const Eigen::Vector3d deltaTheta =
-        errorState.orientationError;
+    const Eigen::Vector3d deltaTheta =errorState.orientationError;
 
     const double angle = deltaTheta.norm();
 
