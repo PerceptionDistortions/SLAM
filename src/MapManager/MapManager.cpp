@@ -45,6 +45,16 @@ MapManager::getKeyframe(KeyframeId id) const
     return it->second;
 }
 
+std::vector<std::shared_ptr<Keyframe>> MapManager::getAllKeyframes() const
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    std::vector<std::shared_ptr<Keyframe>> result;
+    result.reserve(keyframes_.size());
+    for (const auto& entry : keyframes_)
+        if (entry.second) result.push_back(entry.second);
+    return result;
+}
+
 bool MapManager::removeKeyframe(KeyframeId id)
 {
     std::shared_ptr<Keyframe> keyframe;

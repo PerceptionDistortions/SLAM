@@ -524,6 +524,11 @@ Challenges faced
 5. Parallax: Do not check parallax from previous frame but from the last keyframe of current track
 1. Motion gating: Ratio in pnp was being checked wuith all descriptors instead of only landmark
 2. The timestamp of the sensor data and the estimator time and state should be in same units.
+3. E and recover pose based correction cannot get reliable position and velocity.
+4. pnp based corrections cannot repair the map landmarks formed by E+recover pose
+5. The frame pose in visual frontend is not updated to the corrected pose in estimation
+6. Map initialized by essential matrix before using pnp may not be propotional that can result in failure of pnp too later. Use BA with unit motion.
+7. Cannot skip backend with monocular.
 
 
     

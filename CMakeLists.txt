@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(Ceres REQUIRED)
 find_package(Pangolin CONFIG REQUIRED
     PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../Pangolin/build
 )
@@ -23,11 +24,15 @@ target_include_directories(slam_core INTERFACE
 target_link_libraries(slam_core INTERFACE
     ${OpenCV_LIBS}
     Eigen3::Eigen
+    Ceres::ceres
 )
 
 # Application
 add_executable(slam_app
     src/main.cpp
+
+    # Backend
+    src/Backend/Backend.cpp
 
     # Sensors
     src/Sensors/Buffers/BufferManager.cpp

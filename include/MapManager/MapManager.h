@@ -10,6 +10,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
+#include <vector>
 
 class MapManager
 {
@@ -21,6 +22,7 @@ public:
     //FUNCTIONS TO BE USED BY VISUAL FRONTEND
     bool addKeyframe(std::shared_ptr<Keyframe> keyframe);
     std::shared_ptr<Keyframe> getKeyframe(KeyframeId id) const;
+    std::vector<std::shared_ptr<Keyframe>> getAllKeyframes() const;
     bool removeKeyframe(KeyframeId id);
 
     bool addLandmark(std::shared_ptr<Landmark> landmark);

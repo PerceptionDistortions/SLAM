@@ -171,6 +171,12 @@ filter_estimation:
   visual_position_noise_sd: 0.05
   visual_orientation_noise_sd: 0.02
 
+#BACKEND
+backend:
+  essential_matrix_solver: ceres
+  essential_matrix_algo_strategy: LM
+
+#LOGGING
 logging:
   sensors: false
   visual_frontend: false
