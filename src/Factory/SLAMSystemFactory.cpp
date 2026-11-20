@@ -289,7 +289,11 @@ std::unique_ptr<SLAMSystem> SLAMSystemFactory::createMonocular(const SystemConfi
     // ---------------------------------------------------------
     // BACKEND
     // ---------------------------------------------------------
-    dependencies.backend = nullptr;
+    dependencies.backend = std::make_unique<Backend>(
+        config.backend,
+        std::make_unique<LocalBundleAdjustment>(),
+        std::make_unique<GlobalBundleAdjustment>(),
+        std::make_unique<PoseGraphOptimization>());
 
     // ---------------------------------------------------------
     // LOOP CLOSURE

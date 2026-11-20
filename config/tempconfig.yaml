@@ -173,8 +173,57 @@ filter_estimation:
 
 #BACKEND
 backend:
-  essential_matrix_solver: ceres
-  essential_matrix_algo_strategy: LM
+  #MONOCULAR VISUAL FRONTEND : ESSENTIAL MATRIX OPTIMIZATION
+  monocular_essential_matrix_solver: ceres
+  monocular_essential_matrix_solver_strategy: levenberg_marquardt
+
+  #CERES MONOCULAR EM
+  monocular_em_ceres_max_num_iterations: 30
+  monocular_em_ceres_max_solver_time_seconds: 0.05
+  monocular_em_ceres_function_tolerance: 1.0e-6
+  monocular_em_ceres_gradient_tolerance: 1.0e-10
+  monocular_em_ceres_parameter_tolerance: 1.0e-8
+  monocular_em_ceres_num_threads: 1
+  monocular_em_ceres_linear_solver: DENSE_QR
+
+  #MONCULAR VISUAL FRONTEND: POSE ONLY BA
+  monocular_visual_frontend_pose_only_solver: ceres
+  monocular_visual_frontend_pose_only_solver_strategy: levenberg_marquardt
+
+  #CERES: MONOCULAR POSE ONLY BA
+  monocular_pose_only_ceres_max_num_iterations: 20
+  monocular_pose_only_ceres_max_solver_time_seconds: 0.05
+  monocular_pose_only_ceres_function_tolerance: 1.0e-6
+  monocular_pose_only_ceres_gradient_tolerance: 1.0e-10
+  monocular_pose_only_ceres_parameter_tolerance: 1.0e-8
+  monocular_pose_only_ceres_num_threads: 1
+  monocular_pose_only_ceres_linear_solver: DENSE_QR
+
+  #LOCAL BA
+  local_bundle_adjustment_solver: ceres
+  local_bundle_adjustment_solver_strategy: levenberg_marquardt
+
+  #LOCAL BA CERES
+  local_ba_ceres_max_num_iterations: 20
+  local_ba_ceres_max_solver_time_seconds: 0.05
+  local_ba_ceres_function_tolerance: 1.0e-6
+  local_ba_ceres_gradient_tolerance: 1.0e-10
+  local_ba_ceres_parameter_tolerance: 1.0e-8
+  local_ba_ceres_num_threads: 1
+  local_ba_ceres_linear_solver: DENSE_SCHUR
+
+  #GLOBAL BA
+  global_bundle_adjustment_solver: ceres
+  global_bundle_adjustment_solver_strategy: levenberg_marquardt
+
+  #GLOBAL BA CERES
+  global_ba_ceres_max_num_iterations: 50
+  global_ba_ceres_max_solver_time_seconds: 2.0
+  global_ba_ceres_function_tolerance: 1.0e-6
+  global_ba_ceres_gradient_tolerance: 1.0e-10
+  global_ba_ceres_parameter_tolerance: 1.0e-8
+  global_ba_ceres_num_threads: 4
+  global_ba_ceres_linear_solver: SPARSE_SCHUR
 
 #LOGGING
 logging:

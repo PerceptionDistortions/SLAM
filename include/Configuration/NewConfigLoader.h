@@ -31,4 +31,6 @@ private:
 
     static FilterEstimatorConfig parseFilterEstimator(
         const std::string& value);
+
+    static BackendConfig parseBackend(const std::string& value);
 };

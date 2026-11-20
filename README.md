@@ -464,71 +464,96 @@ Current implemented capabilities:
 The current implementation focuses on deterministic architecture validation. The broader SLAM research, trajectory analysis, experiment management, and LLM-based reasoning capabilities are part of the intended future direction.
 
 
-Visual Track Management
-1. Tentative Track
-    Age stored and increased with each frame.
-    If age limit crossed without promoting or demoting without consecutive misses, pruned.
-    If consecutive misses limit crossed, deleted track.
-    If consecutive matches as defined, promotes to active track.
-2. Active Track
-    Age stored and increased with each frame.
-    If age limit crossed without promoting or demoting without consecutive misses, pruned.
-    If consecutive misses limit crossed, demoted to tentative.
-    If consecutive matches as defined and passes parallax and baseline test, triangulation is attempted and if success and validated, it is promoted to a triangulated track.
-3. Triangulated track
-    No age based pruning.
-    consective failures, marked as triagnulated_lost state.
-    If passes the multi frame matching and validation and reprojection tests, should be promoted to landmkark.
-    Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
-4. Triangulated_lost
-    No age stored: only consecutive matches or misses
-    If consecutuce macthes: promoted back to triangulated. Needs correspondence match, not only feature match.
-    If consecutive misses: deleted (not demoetd to active).
-    Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
-5. Landmark
-    Age is not stored and so no pruning.
-    Consecutive misses: demote to landmark lost.
-    Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
-6. Landmark_lost
-    No age stored
-    Consecutive misses: delete
-    Consecitve matches: promote back to landmark.
-     Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+## Visual Track Management
+
+### 1. Tentative Track
+
+- Age stored and increased with each frame.
+- If age limit crossed without promoting or demoting without consecutive misses, pruned.
+- If consecutive misses limit crossed, deleted track.
+- If consecutive matches as defined, promotes to active track.
+
+### 2. Active Track
+
+- Age stored and increased with each frame.
+- If age limit crossed without promoting or demoting without consecutive misses, pruned.
+- If consecutive misses limit crossed, demoted to tentative.
+- If consecutive matches as defined and passes parallax and baseline test, triangulation is attempted and if success and validated, it is promoted to a triangulated track.
+
+### 3. Triangulated track
+
+- No age based pruning.
+- consective failures, marked as triagnulated_lost state.
+- If passes the multi frame matching and validation and reprojection tests, should be promoted to landmkark.
+- Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+
+### 4. Triangulated_lost
+
+- No age stored: only consecutive matches or misses
+- If consecutuce macthes: promoted back to triangulated. Needs correspondence match, not only feature match.
+- If consecutive misses: deleted (not demoetd to active).
+- Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+
+### 5. Landmark
+
+- Age is not stored and so no pruning.
+- Consecutive misses: demote to landmark lost.
+- Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
+
+### 6. Landmark_lost
+
+- No age stored
+- Consecutive misses: delete
+- Consecitve matches: promote back to landmark.
+- Always to be checked aganst camera pose before conseuctive failures or macthes if it is possible to view landmark from a given cam pose.
 
     
-    Challenges faced in track management:
-    1. Very low number of active tracks even when the number matches were high. Threshold issue in config.
-    2. The active tracks in second frame itself dropped by 60 when only 8 were succesfully triangulated. The fail threshold is 8. Inliers count was not being updated on promotion from tentative track. Every frame check deleted active track, triangulated, and promoted from tentative.
-    3. Parallax and baseline check was not checking for consecutive active inliers.
+## Challenges Faced
 
-    Failure modes
-    1. Scale ambiguity in monocular SLAM.
-    2. Degenerate camera motion.
-    3. Low parallax and poor triangulation.
-    4. Feature tracking degradation.
-    5. Incorrect pose estimation.
-    6. Covariance inconsistency and estimator divergence.
+### Track-Management Challenges
 
-    Performances
-    1. Real-time processing constraints.
-    2. CPU and memory profiling.
-    3. Multithreading and synchronization.
-    4. Embedded/ARM optimization.
-    5. Processing latency and throughput.
+- **Low active-track retention:** The frontend often retained few active tracks despite a high descriptor-match count, suggesting that match filtering and track-transition thresholds needed to be tuned together.
+- **Unexpected track loss after promotion:** In one run, the active-track count fell by about 60 in the second frame while only eight tracks triangulated successfully; the miss threshold was also eight. The inlier count was not carried over when a tentative track became active, so subsequent updates could remove it prematurely and repeatedly promote replacement tracks.
+- **Insufficient temporal evidence for triangulation:** Parallax and baseline checks were not consistently conditioned on consecutive inlier observations from an active track.
 
-Challenges faced
-1. 100 triangulation candidates, triangulated, 0 passed valdiation: The parallax checks in triangulation and initial parallax check thresholds are diff.
-2. Parallax : Baseline not to be used without pnp, arbitrary and normalized scale
-3. Parallax threshold relaxation brings better results
-4. Checked low trigulation candidates with ground truth pose comparison: relevant
-5. Parallax: Do not check parallax from previous frame but from the last keyframe of current track
-1. Motion gating: Ratio in pnp was being checked wuith all descriptors instead of only landmark
-2. The timestamp of the sensor data and the estimator time and state should be in same units.
-3. E and recover pose based correction cannot get reliable position and velocity.
-4. pnp based corrections cannot repair the map landmarks formed by E+recover pose
-5. The frame pose in visual frontend is not updated to the corrected pose in estimation
-6. Map initialized by essential matrix before using pnp may not be propotional that can result in failure of pnp too later. Use BA with unit motion.
-7. Cannot skip backend with monocular.
+### Initialization, Pose, and Scale Challenges
 
+- **Monocular scale ambiguity:** Essential-matrix pose recovery determines translation direction, not translation magnitude. Position and velocity therefore cannot be recovered metrically from essential-matrix/recover-pose updates alone.
+- **Scale consistency between initialization and PnP:** A map initialized from essential-matrix motion may use an arbitrary unit-baseline scale. If later poses and landmarks do not preserve that same scale convention, PnP can become unreliable; backend bundle adjustment under a fixed gauge is needed to refine consistency.
+- **PnP does not repair an inconsistent map:** PnP estimates the current camera pose relative to existing landmarks. It does not, by itself, correct landmarks previously triangulated under an inconsistent essential-matrix scale; those points need consistent re-triangulation or map optimization.
+- **PnP motion-gating ratio:** The PnP inlier ratio was being computed against all descriptor matches rather than only valid 2D–3D landmark correspondences. The denominator should reflect the correspondence set actually passed to PnP.
+- **Pose correction ownership:** The visual frontend's frame pose was not updated from the estimator's corrected pose. The system needs a clear source of truth and a defined path for propagating corrections between estimator, frontend, and map.
+- **Backend refinement:** Monocular scale ambiguity and accumulated pose/landmark error make backend map refinement an important part of this system; essential-matrix initialization alone is not a substitute for bundle adjustment.
 
-    
+### Triangulation and Parallax Challenges
+
+- **Candidate/validation threshold mismatch:** One run produced roughly 100 triangulation candidates and no points that passed validation. A likely cause was that candidate selection and triangulation validation used different parallax thresholds; these checks should share a consistent geometric policy.
+- **Baseline under unknown scale:** A metric baseline threshold should not be applied directly to translation recovered from essential-matrix geometry, whose magnitude is arbitrary. Use a scale-aware baseline only after the map scale is established, or use a scale-independent parallax criterion.
+- **Threshold trade-off:** Relaxing the parallax threshold improved triangulation yield in observed runs, but low-parallax points have uncertain depth. Tune the threshold using cheirality, reprojection error, and ray-separation checks rather than yield alone.
+- **Reference-pose choice:** For keyframe mapping, evaluate parallax relative to the track's reference keyframe when appropriate, rather than always using the immediately previous frame.
+- **Ground-truth comparison:** Low triangulation counts should be investigated alongside ground-truth pose comparisons where available, so frontend thresholds can be distinguished from pose-estimation error.
+
+### Estimator and Timing Challenges
+
+- **Timestamp units:** Sensor timestamps, frontend timestamps, and estimator state timestamps must use the same unit and epoch. Convert explicitly at a single system boundary.
+- **Covariance consistency:** Scale ambiguity, poor covariance initialization, or mismatched process and measurement noise can make the estimator overconfident or cause divergence.
+- **Visual-only velocity observability:** Essential-matrix motion provides relative rotation and translation direction, not reliable metric position or velocity. Velocity needs a suitable motion model and additional observable information.
+
+## General Failure Modes and Performance Considerations
+
+### General Failure Modes
+
+- Monocular scale ambiguity and gauge freedom.
+- Degenerate camera motion, including near-pure rotation.
+- Low parallax leading to poorly conditioned triangulation and uncertain depth.
+- Feature-tracking degradation from blur, exposure changes, occlusion, or weak texture.
+- Incorrect pose estimates caused by outliers or insufficient geometric constraints.
+- Inconsistent covariance estimates and estimator divergence.
+
+### Performance and Deployment Considerations
+
+- Meet real-time processing constraints at the target image resolution and frame rate.
+- Profile CPU and memory use on representative sequences.
+- Add multithreading only with clear synchronization for shared map and track data.
+- Evaluate performance on embedded/ARM hardware if it is a deployment target.
+- Measure end-to-end processing latency and sustained throughput.

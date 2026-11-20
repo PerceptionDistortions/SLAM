@@ -155,18 +155,14 @@ TriangulationResult MidpointTriangulator::triangulate(
     const Eigen::Vector3d baseline = C2 - C1;
     const double baselineLength = baseline.norm();
 
-    if (!std::isfinite(baselineLength) ||
-        baselineLength <= config_.minBaseline)
+    if (!std::isfinite(baselineLength) || baselineLength <= config_.minBaseline)
     {
         return fail(TriangulationFailure::InsufficientBaseline);
     }
 
     // Convert undistorted pixel coordinates into unit bearing vectors.
-    const Eigen::Vector3d pixel1(
-        first.pixel.x, first.pixel.y, 1.0);
-
-    const Eigen::Vector3d pixel2(
-        second.pixel.x, second.pixel.y, 1.0);
+    const Eigen::Vector3d pixel1(first.pixel.x, first.pixel.y, 1.0);
+    const Eigen::Vector3d pixel2(second.pixel.x, second.pixel.y, 1.0);
 
     Eigen::Vector3d bearing1 = first.K.inverse() * pixel1;
     Eigen::Vector3d bearing2 = second.K.inverse() * pixel2;
@@ -250,8 +246,7 @@ TriangulationResult MidpointTriangulator::triangulate(
     }
 
     // Transform the estimate back into both camera coordinate systems.
-    const Eigen::Vector3d pointCamera1 =
-        Rcw1 * result.pointWorld + tcw1;
+    const Eigen::Vector3d pointCamera1 =Rcw1 * result.pointWorld + tcw1;
 
     const Eigen::Vector3d pointCamera2 =
         Rcw2 * result.pointWorld + tcw2;

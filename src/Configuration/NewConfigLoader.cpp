@@ -127,6 +127,13 @@ SystemConfigs NewConfigLoader::load(const std::string& filePath)
             YAML::Dump(root["triangulation"]));
     }
 
+    // BACKEND
+    if (root["backend"])
+    {
+        config.backend = parseBackend(
+            YAML::Dump(root["backend"]));
+    }
+
     // LOGGING
     if (root["logging"])
     {
@@ -649,6 +656,101 @@ LoggerConfig NewConfigLoader::parseLogging(
 
     config.logMap = readOrDefault(
         node, "map", config.logMap);
+
+    return config;
+}
+
+//Backend Configurations
+BackendConfig NewConfigLoader::parseBackend(
+    const std::string& value)
+{
+    const YAML::Node node = loadYamlSection(value);
+
+    BackendConfig config;
+
+    config.essential_matrix_solver = readOrDefault(
+        node, "monocular_essential_matrix_solver", config.essential_matrix_solver);
+
+    config.essential_matrix_solver_strategy = readOrDefault(
+        node, "monocular_essential_matrix_solver_strategy", config.essential_matrix_solver_strategy);
+
+    config.monocular_em_ceres_max_num_iterations = readOrDefault(
+        node, "monocular_em_ceres_max_num_iterations", config.monocular_em_ceres_max_num_iterations);
+    config.monocular_em_ceres_max_solver_time_seconds = readOrDefault(
+        node, "monocular_em_ceres_max_solver_time_seconds", config.monocular_em_ceres_max_solver_time_seconds);
+    config.monocular_em_ceres_function_tolerance = readOrDefault(
+        node, "monocular_em_ceres_function_tolerance", config.monocular_em_ceres_function_tolerance);
+    config.monocular_em_ceres_gradient_tolerance = readOrDefault(
+        node, "monocular_em_ceres_gradient_tolerance", config.monocular_em_ceres_gradient_tolerance);
+    config.monocular_em_ceres_parameter_tolerance = readOrDefault(
+        node, "monocular_em_ceres_parameter_tolerance", config.monocular_em_ceres_parameter_tolerance);
+    config.monocular_em_ceres_num_threads = readOrDefault(
+        node, "monocular_em_ceres_num_threads", config.monocular_em_ceres_num_threads);
+    config.monocular_em_ceres_linear_solver = readOrDefault(
+        node, "monocular_em_ceres_linear_solver", config.monocular_em_ceres_linear_solver);
+
+    config.visual_frontend_pose_only_solver = readOrDefault(
+        node, "monocular_visual_frontend_pose_only_solver", config.visual_frontend_pose_only_solver);
+
+    config.visual_frontend_pose_only_solver_strategy = readOrDefault(
+        node, "monocular_visual_frontend_pose_only_solver_strategy", config.visual_frontend_pose_only_solver_strategy);
+
+    config.monocular_pose_only_ceres_max_num_iterations = readOrDefault(
+        node, "monocular_pose_only_ceres_max_num_iterations", config.monocular_pose_only_ceres_max_num_iterations);
+    config.monocular_pose_only_ceres_max_solver_time_seconds = readOrDefault(
+        node, "monocular_pose_only_ceres_max_solver_time_seconds", config.monocular_pose_only_ceres_max_solver_time_seconds);
+    config.monocular_pose_only_ceres_function_tolerance = readOrDefault(
+        node, "monocular_pose_only_ceres_function_tolerance", config.monocular_pose_only_ceres_function_tolerance);
+    config.monocular_pose_only_ceres_gradient_tolerance = readOrDefault(
+        node, "monocular_pose_only_ceres_gradient_tolerance", config.monocular_pose_only_ceres_gradient_tolerance);
+    config.monocular_pose_only_ceres_parameter_tolerance = readOrDefault(
+        node, "monocular_pose_only_ceres_parameter_tolerance", config.monocular_pose_only_ceres_parameter_tolerance);
+    config.monocular_pose_only_ceres_num_threads = readOrDefault(
+        node, "monocular_pose_only_ceres_num_threads", config.monocular_pose_only_ceres_num_threads);
+    config.monocular_pose_only_ceres_linear_solver = readOrDefault(
+        node, "monocular_pose_only_ceres_linear_solver", config.monocular_pose_only_ceres_linear_solver);
+
+    config.local_bundle_adjustment_solver = readOrDefault(
+        node, "local_bundle_adjustment_solver", config.local_bundle_adjustment_solver);
+
+    config.local_bundle_adjustment_solver_strategy = readOrDefault(
+        node, "local_bundle_adjustment_solver_strategy", config.local_bundle_adjustment_solver_strategy);
+
+    config.local_ba_ceres_max_num_iterations = readOrDefault(
+        node, "local_ba_ceres_max_num_iterations", config.local_ba_ceres_max_num_iterations);
+    config.local_ba_ceres_max_solver_time_seconds = readOrDefault(
+        node, "local_ba_ceres_max_solver_time_seconds", config.local_ba_ceres_max_solver_time_seconds);
+    config.local_ba_ceres_function_tolerance = readOrDefault(
+        node, "local_ba_ceres_function_tolerance", config.local_ba_ceres_function_tolerance);
+    config.local_ba_ceres_gradient_tolerance = readOrDefault(
+        node, "local_ba_ceres_gradient_tolerance", config.local_ba_ceres_gradient_tolerance);
+    config.local_ba_ceres_parameter_tolerance = readOrDefault(
+        node, "local_ba_ceres_parameter_tolerance", config.local_ba_ceres_parameter_tolerance);
+    config.local_ba_ceres_num_threads = readOrDefault(
+        node, "local_ba_ceres_num_threads", config.local_ba_ceres_num_threads);
+    config.local_ba_ceres_linear_solver = readOrDefault(
+        node, "local_ba_ceres_linear_solver", config.local_ba_ceres_linear_solver);
+
+    config.global_bundle_adjustment_solver = readOrDefault(
+        node, "global_bundle_adjustment_solver", config.global_bundle_adjustment_solver);
+
+    config.global_bundle_adjustment_solver_strategy = readOrDefault(
+        node, "global_bundle_adjustment_solver_strategy", config.global_bundle_adjustment_solver_strategy);
+
+    config.global_ba_ceres_max_num_iterations = readOrDefault(
+        node, "global_ba_ceres_max_num_iterations", config.global_ba_ceres_max_num_iterations);
+    config.global_ba_ceres_max_solver_time_seconds = readOrDefault(
+        node, "global_ba_ceres_max_solver_time_seconds", config.global_ba_ceres_max_solver_time_seconds);
+    config.global_ba_ceres_function_tolerance = readOrDefault(
+        node, "global_ba_ceres_function_tolerance", config.global_ba_ceres_function_tolerance);
+    config.global_ba_ceres_gradient_tolerance = readOrDefault(
+        node, "global_ba_ceres_gradient_tolerance", config.global_ba_ceres_gradient_tolerance);
+    config.global_ba_ceres_parameter_tolerance = readOrDefault(
+        node, "global_ba_ceres_parameter_tolerance", config.global_ba_ceres_parameter_tolerance);
+    config.global_ba_ceres_num_threads = readOrDefault(
+        node, "global_ba_ceres_num_threads", config.global_ba_ceres_num_threads);
+    config.global_ba_ceres_linear_solver = readOrDefault(
+        node, "global_ba_ceres_linear_solver", config.global_ba_ceres_linear_solver);
 
     return config;
 }

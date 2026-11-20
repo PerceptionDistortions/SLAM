@@ -1,6 +1,9 @@
 #pragma once
 
-#include"Backend/SolverStrategy/SolverStrategy.h"
-#include"Backend/OptimizationProblem/OptimizationProblem.h"
+#include "Backend/SolverStrategy/SolverStrategy.h"
 
-class GaussNewtonStrategy : public SolverStrategy {};
+class GaussNewtonStrategy : public SolverStrategy
+{
+public:
+    OptimizationAlgorithm getAlgorithm() const override;
+};

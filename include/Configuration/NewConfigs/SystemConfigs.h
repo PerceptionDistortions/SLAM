@@ -11,6 +11,7 @@
 #include"Configuration/NewConfigs/SensorsConfig.h"
 #include"Configuration/NewConfigs/SensorDataSourceConfig.h"
 #include"Configuration/NewConfigs/FilterEstimatorConfig.h"
+#include"Configuration/NewConfigs/BackendConfig.h"
 
 struct SystemConfigs
 {
@@ -26,4 +27,6 @@ struct SystemConfigs
     LoggerConfig logging;
 
     FilterEstimatorConfig filterEstimator;
+
+    BackendConfig backend;
 };
