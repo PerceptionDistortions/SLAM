@@ -35,6 +35,8 @@ MonocularEKFSLAMSystem::MonocularEKFSLAMSystem(
 }
 
 //INITIAL STATE OF ESTIMATOR
+//NO BACKEND INIT REQUIRED
+//NO MAP MANAGER INIT: HANDLED BY FACTORY
 bool MonocularEKFSLAMSystem::init()
 {
     if (initialized_) return true;
@@ -43,25 +45,8 @@ bool MonocularEKFSLAMSystem::init()
     if(!sensor_manager_->init()) return false;
     if(!sensor_manager_->start()) return false;
 
-    //INIT ESTIMATOR: THE FIRST FRAME IS ORIGIN IN MONOCULAR
-    //CREATE AN STATE AND INIT ESTIMATOR, NOT POSSIBLE TO DIRECTLY ASSIGN
-    //COVARIANCE NEEDS TO BE INIT, INITIAL UNCETAINTY MATRIX
-    //DONE IN UPDATE BECAUSE OF TIMESTAMP COMPATIBILITY
-    // StateEstimate initialState;
-    // initialState.timestamp = 0.0;
-    // initialState.position = Eigen::Vector3d::Zero();
-    // initialState.velocity = Eigen::Vector3d::Zero();
-    // initialState.orientation = Eigen::Quaterniond::Identity();
-
-    // estimator_->initialize(initialState);
-    // estimator_initialized_ = true;
-
     //INIT FRONTEND
     if(!frontend_->init()) return false;
-
-    //INIT MAP MANAGER
-
-    //INIT BACKEND
 
     //INIT LOOP CLOSURE
 
@@ -77,31 +62,30 @@ bool MonocularEKFSLAMSystem::init()
 //ONE SLAM ITERATION
 bool MonocularEKFSLAMSystem::update()
 {
-    //IS SLAM SYSTEM INITIALIZED?
+    //SLAM SYSTEM INIT CHECK
     if (!initialized_) throw std::runtime_error("Monocular SLAM System not initialized.");
 
-    //NEXT BUFFER DAT
+    //BUFFER DATA VALIDATION THAT WAS SUPPLIED
     SensorManager::Data data;
     if (!sensor_manager_->popNext(data)) return false;
 
-    //ID FRONTEND DEFINED? (OWNED BY SYSTEM)
-    if (!frontend_)
-    {
-        std::cout << "Frontend not found" << std::endl;
-        return false;
-    }
+    //FRONTEND END EXISTS AND VALID?
+    if (!frontend_) return false; 
 
-    //MEASUREMENT WILL HOLD THE DATA OF THE VISUAL FRONTEND
+    //OUTPUT OF THE VISUAL FRONTEND
     std::unique_ptr<Measurement> measurement;
+
+    //------------------------------------------------------------------------------------
 
     // ONLY CAMERA DATA ALLOWED: MONO SLAM
     if (std::holds_alternative<CameraData>(data))
     {
         const auto& cameraData =std::get<CameraData>(data);
 
-        // Only process the configured camera
+        //DATA COMES FROM SPECIFIED CAMERA?
         if (cameraData.sensor_id != camera_name_) return false;
 
+        //INIT FIRST STATE
         if (!estimator_initialized_)
         {
             StateEstimate initialState;
@@ -112,19 +96,22 @@ bool MonocularEKFSLAMSystem::update()
             estimator_->initialize(initialState);
             estimator_initialized_ = true;
         }
+        //WE DO NOT KEEP IT IN INIT
+        //TIME STAMP OF FIRST FRAME IS REQUIRED TO INIT
+        //INIT ESTIMATOR: THE FIRST FRAME IS ORIGIN IN MONOCULAR
+        //CREATE AN STATE AND INIT ESTIMATOR, NOT POSSIBLE TO DIRECTLY ASSIGN
+        //COVARIANCE NEEDS TO BE INIT, INITIAL UNCETAINTY MATRIX
+        //DONE IN UPDATE BECAUSE OF TIMESTAMP COMPATIBILITY
+
 
         // CONTROLLED DATASET PLAYBACK
         if (keyBasedControlledPlayback_)
         {
             char key;
-
-            std::cout << "\nPress P + Enter to process next frame..."
-                    << std::endl;
-
+            std::cout << "\nPress P + Enter to process next frame..."<< std::endl;
             do
             {
-                if (!(std::cin >> key))
-                    return false;
+                if (!(std::cin >> key)) return false;
             }
             while (key != 'p' && key != 'P');
         }
@@ -136,34 +123,32 @@ bool MonocularEKFSLAMSystem::update()
             << " | timestamp=" << cameraData.timestamp
             << std::endl;
 
-        // Convert CameraData -> FrontendData
+        // FRONTEND DATA IS A VARIANT: CONVERT CAMERA FRONTEND TO IT
+        //REQUIRED TO PROCESS IN GENERIC ABSTRACTION
         FrontendData frontendData = convertCameraDataToFrontendData(cameraData);
-
-        // DATA CONVERTED
         measurement = frontend_->process(frontendData);
         if (!measurement)
         {
             std::cout << "Frontend returned null measurement" << std::endl;
             return false;
         }
+
+        //IS ESTIMATOR INIT?
         if (!estimator_ || !estimator_initialized_) return false;
 
-        //ESTIMATOR (FILTER) TAKES UP THE TASK
+        //PROCESS IN ESTIMATOR
         estimator_->process(*measurement);
     }
+
+    //IF NO CAMERA DATA FROM CORRECT CAMERA SKIP
     else
     {
         // This monocular SLAM pipeline does not handle IMU
         return false;
     }
 
-    //THE RESULTING MEASURMENT IS PASSED TO THE ESTIMATOR: EKF
-    
-
-    //PASS THE VISUAL FRONTEND DATA TO ESTIMATOR
-
     //BACKEND OPTIMIZATION AND LOOP CLOSURE CHECK
-
+    std::cout<<"SLAM System update complete."<<std::endl;
     return true;
 }
 

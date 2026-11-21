@@ -3,8 +3,6 @@
 #include<unordered_set>
 
 #include "Frontend/VisualFrontend/Pipeline/VisualFrontend.h"
-#include"Configuration/Configs/SystemConfig.h"
-#include"Configuration/Configs/FrontendConfig.h"
 #include "Sensors/Calibration/DataStructures/CameraCalibration.h"
 #include "Frontend/VisualFrontend/Parallax/IParallaxChecker.h"
 #include "Frontend/VisualFrontend/Baseline/IBaselineChecker.h"

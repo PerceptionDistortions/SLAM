@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include "AliasesEnumsTypes/CommonAliases.h"
 #include "MapManager/Pose.h"
 
 class PoseGraphNode

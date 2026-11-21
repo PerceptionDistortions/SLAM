@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SLAMSystem/SLAMSystem.h"
-#include "Configuration/Configs/SystemConfig.h"
 #include "Factory/SLAMSystemDependencies.h"
 
 #include <memory>

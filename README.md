@@ -536,6 +536,7 @@ The current implementation focuses on deterministic architecture validation. The
 ### Estimator and Timing Challenges
 
 - **Timestamp units:** Sensor timestamps, frontend timestamps, and estimator state timestamps must use the same unit and epoch. Convert explicitly at a single system boundary.
+- **Negative estimator time difference:** Estimator processing failed when the frame timestamp was earlier than the initialized state timestamp. `MonocularFrame::timestamp` used an integer type even though the system assigned seconds as a floating-point value, truncating fractional seconds. Defining the frame timestamp as `double` preserves the fractional time and prevents this mismatch.
 - **Covariance consistency:** Scale ambiguity, poor covariance initialization, or mismatched process and measurement noise can make the estimator overconfident or cause divergence.
 - **Visual-only velocity observability:** Essential-matrix motion provides relative rotation and translation direction, not reliable metric position or velocity. Velocity needs a suitable motion model and additional observable information.
 

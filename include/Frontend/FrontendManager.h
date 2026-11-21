@@ -9,6 +9,7 @@
 #include"Sensors/Buffers/BufferManager.h"
 #include"Frontend/VisualFrontend/Pipeline/VisualData.h"
 
+//ALL TYPES OF FRONTEND DATA GENERATED
 using FrontendData = std::variant<
     MonocularFrame,
     StereoFrame,

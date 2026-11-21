@@ -12,8 +12,12 @@ void PoseGraph::addNode(
         return;
     }
 
+    Pose nodePose;
+    nodePose.position = pose.translation();
+    nodePose.orientation = Eigen::Quaterniond(pose.rotation()).normalized();
+
     nodes_[keyframeId] =
-        std::make_shared<PoseGraphNode>(keyframeId,pose);
+        std::make_shared<PoseGraphNode>(keyframeId, nodePose);
 }
 
 void PoseGraph::removeNode(

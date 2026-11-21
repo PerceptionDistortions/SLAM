@@ -16,7 +16,6 @@ ceres::LinearSolverType parseLinearSolver(const std::string& linearSolver)
     });
 
     if (value == "DENSE_QR") return ceres::DENSE_QR;
-    if (value == "SPARSE_QR") return ceres::SPARSE_QR;
     if (value == "DENSE_NORMAL_CHOLESKY") return ceres::DENSE_NORMAL_CHOLESKY;
     if (value == "SPARSE_NORMAL_CHOLESKY") return ceres::SPARSE_NORMAL_CHOLESKY;
     if (value == "DENSE_SCHUR") return ceres::DENSE_SCHUR;

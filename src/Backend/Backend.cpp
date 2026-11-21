@@ -122,7 +122,7 @@ void Backend::optimizeGlobal(MapManager& map, const CameraCalibration& calibrati
         globalBA_->optimize(map, calibration, *globalSolver_);
 }
 
-void Backend::optimizePoseGraph(MapManager& map)
+void Backend::optimizePoseGraph(MapManager&)
 {
-    if (poseGraphOptimization_) poseGraphOptimization_->optimize(map);
+    // Pose-graph optimization has no implementation yet.
 }

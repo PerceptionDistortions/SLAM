@@ -478,8 +478,11 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
         }
     }
 
+    std::cout<<"Landmark determination loop finished."<<std::endl;
+
     trackManager_->prune();
 
+    std::cout<<"Prune finished"<<std::endl;
 
     //UPDATE PREV FRAME DATA
     prevKeypoints_ = keypoints_;
@@ -487,7 +490,9 @@ std::unique_ptr<Measurement> MonocularVisualFrontend::processVisual(const Visual
     prevFrameId_ = currentFrameId;
     if (currFramePose_.valid) prevFramePose_ = currFramePose_;
 
-    // return nullptr;
+    // return nullptr; //REMOVE LATER
+
+    //CONVERT THE COMPUTED POSE DATA IN MONOCULAR DATA STRUCTURE AND SEND TO SLAM
     return std::make_unique<MonocularVisualMeasurement>
     (frame->timestamp, currFramePose_.positionWorld,
         Eigen::Quaterniond(currFramePose_.worldFromCameraRotation));

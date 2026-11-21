@@ -33,6 +33,14 @@ add_executable(slam_app
 
     # Backend
     src/Backend/Backend.cpp
+    src/Backend/BA/LocalBundleAdjustment.cpp
+    src/Backend/BA/GlobalBundleAdjustment.cpp
+    src/Backend/Solver/CeresSolver.cpp
+    src/Backend/SolverStrategy/LevenbergMarquardtStrategy.cpp
+    src/Backend/SolverStrategy/DoglegStrategy.cpp
+    src/Backend/SolverStrategy/GaussNewtonStrategy.cpp
+    src/Backend/VisualFrontend/EssentialMatrixOptimization.cpp
+    src/Backend/VisualFrontend/PoseOnlyOptimization.cpp
 
     # Sensors
     src/Sensors/Buffers/BufferManager.cpp
@@ -105,6 +113,7 @@ add_executable(slam_app
     src/MapManager/KeyframesLandmarks/Landmark.cpp
     src/MapManager/KeyframesLandmarks/LandmarkObservation.cpp
     src/MapManager/KeyframeDatabase.cpp
+    src/MapManager/PoseGraph/PoseGraph.cpp
 )
 
 target_include_directories(slam_app PRIVATE
